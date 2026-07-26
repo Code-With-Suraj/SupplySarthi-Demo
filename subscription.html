@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>SupplySarthi | Flexible Subscription Plans</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --primary: #166534;
+      --primary-dark: #14532d;
+      --primary-light: #dcfce7;
+      --accent: #f59e0b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    }
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #f1f5f9;
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    .sub-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    .sub-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .sub-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      background: #dcfce7;
+      color: #15803d;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .sub-title {
+      font-size: 36px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .sub-subtitle {
+      font-size: 18px;
+      color: #64748b;
+      margin: 0 auto;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 32px;
+      align-items: stretch;
+    }
+
+    .plan-card {
+      background: #ffffff;
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 36px 28px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.03);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .plan-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .plan-card.featured {
+      border-color: var(--primary);
+      background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+      box-shadow: 0 20px 25px -5px rgba(22, 101, 52, 0.12);
+    }
+
+    .featured-tag {
+      position: absolute;
+      top: -16px;
+      right: 24px;
+      background: linear-gradient(135deg, #166534, #15803d);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.3);
+    }
+
+    .plan-name {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .plan-desc {
+      font-size: 14px;
+      color: #64748b;
+      margin: 0 0 20px;
+      line-height: 1.5;
+    }
+
+    .plan-price-box {
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .promo-banner {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px dashed #f59e0b;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .price-original {
+      text-decoration: line-through;
+      color: #94a3b8;
+      font-size: 16px;
+      font-weight: 600;
+      margin-right: 6px;
+    }
+
+    .price-value {
+      font-size: 42px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .price-period {
+      font-size: 16px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .feature-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 32px;
+      flex-grow: 1;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      color: #334155;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .feature-item i {
+      color: #166534;
+      font-size: 16px;
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+
+    .btn-plan {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-plan-primary {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-plan-primary:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 10px 15px -3px rgba(22, 101, 52, 0.3);
+    }
+
+    .btn-plan-outline {
+      background: #ffffff;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+
+    .btn-plan-outline:hover {
+      background: #f0fdf4;
+    }
+
+    .trial-badge {
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 12px;
+      font-weight: 600;
+    }
+
+    .toast-box {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 24px;
+      border-radius: 12px;
+      background: #0f172a;
+      color: #fff;
+      font-weight: 600;
+      z-index: 9999;
+      display: none;
+      box-shadow: var(--shadow-lg);
+    }
+    .toast-box.show { display: block; }
+  </style>
+</head>
+<body>
+
+  <div class="sub-container">
+    <div class="sub-header">
+      <div class="sub-badge">🥈 Flexible Monthly &amp; Annual Options</div>
+      <h1 class="sub-title">Upgrade Your SupplySarthi Account</h1>
+      <p class="sub-subtitle">Streamline orders, deliveries, invoices, ledgers, and WhatsApp notifications with full business automation.</p>
+      
+      <div id="freeTrialBtnContainer" style="margin-top:20px;">
+        <button onclick="startFreeTrialDirect()" style="background:linear-gradient(135deg,#dcfce7,#86efac);color:#15803d;border:2px solid #22c55e;padding:12px 24px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 20px rgba(34,197,94,0.15);transition:transform 0.2s;">
+          <i class="fa fa-gift" style="font-size:18px;"></i> Start 14-Day Free Trial (No Card Required)
+        </button>
+      </div>
+    </div>
+
+    <div class="plans-grid">
+
+      <!-- Monthly Plan Card -->
+      <div class="plan-card">
+        <div class="plan-name">
+          <span>Monthly Plan</span>
+        </div>
+        <p class="plan-desc">Perfect for full business automation with unlimited usage.</p>
+        
+        <div class="plan-price-box">
+          <div class="promo-banner">🎉 First Month Promo: Only ₹499!</div>
+          <div>
+            <span class="price-value">₹999</span>
+            <span class="price-period">/month</span>
+          </div>
+        </div>
+
+        <ul class="feature-list">
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Clients</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Orders & Sites</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Order & Delivery Management</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Client & Site Management</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>GST Invoice Generation</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Delivery Challan & PDF</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Account Ledger Management</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Payment Tracking</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Client Portal</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>WhatsApp Notifications</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Client-wise Price Lists</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Daily & Monthly Invoicing</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Sales & Outstanding Reports</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Credit & Debit Notes</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Dedicated WhatsApp Support</span></li>
+        </ul>
+
+        <button class="btn-plan btn-plan-outline" onclick="startSubscriptionCheckout('monthly', true)">
+          Start for ₹499 →
+        </button>
+        <div id="freeTrialBadge" class="trial-badge">🎁 Includes 14 days free trial eligibility</div>
+      </div>
+
+      <!-- Yearly Plan Card (Featured) -->
+      <div class="plan-card featured">
+        <div class="featured-tag">⭐ Best Value & Annual Savings</div>
+        <div class="plan-name">
+          <span>Yearly Plan</span>
+        </div>
+        <p class="plan-desc">Maximum savings for long-term growth and locked-in pricing.</p>
+        
+        <div class="plan-price-box">
+          <div class="promo-banner">🎉 Save ₹1,989 Every Year</div>
+          <div>
+            <span class="price-original">₹11,988</span>
+            <span class="price-value">₹9,999</span>
+            <span class="price-period">/year</span>
+          </div>
+        </div>
+
+        <ul class="feature-list">
+          <li class="feature-item"><i class="fa-solid fa-star" style="color:#eab308;"></i> <strong>Everything in Monthly Plan</strong></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Clients & Orders</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Sites</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Priority Setup & Migration</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Dedicated On-Call Support</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>All Future Updates Included</span></li>
+          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Price Locked Forever</span></li>
+        </ul>
+
+        <button class="btn-plan btn-plan-primary" onclick="startSubscriptionCheckout('yearly', false)">
+          Get Yearly Plan →
+        </button>
+        <div class="trial-badge">🔒 Locked price guarantee + Priority setup</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast-box"></div>
+
+  <!-- Busy Overlay -->
+  <div id="busyOverlay" class="busy-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:10000;justify-content:center;align-items:center;color:#fff;text-align:center;">
+    <div style="background:#ffffff;color:#0f172a;padding:32px 48px;border-radius:20px;box-shadow:var(--shadow-lg);">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size:36px;color:#166534;margin-bottom:16px;"></i>
+      <h3 id="busyTitle" style="margin:0 0 8px;font-size:20px;">Please wait</h3>
+      <p id="busySubtitle" style="margin:0;color:#64748b;font-size:14px;">Processing...</p>
+    </div>
+  </div>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="config.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      api('getSubscriptionInfo', {}, function (r) {
+        if (r && (r.hasUsedTrial || r.canUseFreeTrial === false || r.plan)) {
+          var btnContainer = document.getElementById('freeTrialBtnContainer');
+          if (btnContainer) btnContainer.style.display = 'none';
+          var trialBadge = document.getElementById('freeTrialBadge');
+          if (trialBadge) trialBadge.style.display = 'none';
+        }
+      });
+    });
+
+    function toast(msg, isErr) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.background = isErr ? '#b91c1c' : '#166534';
+      t.classList.add('show');
+      setTimeout(function () { t.classList.remove('show'); }, 3500);
+    }
+    function beginBusy(title, subtitle) {
+      document.getElementById('busyTitle').textContent = title || 'Please wait';
+      document.getElementById('busySubtitle').textContent = subtitle || 'Processing...';
+      document.getElementById('busyOverlay').style.display = 'flex';
+    }
+    function endBusy() {
+      document.getElementById('busyOverlay').style.display = 'none';
+    }
+    function api(action, payload, cb, errCb) {
+      var body = Object.assign({ action: action }, payload || {});
+      fetch(CONFIG.GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { if (cb) cb(data); })
+      .catch(function (err) { if (errCb) errCb(err); else toast('Error: ' + err.message, true); });
+    }
+    function startFreeTrialDirect() {
+      beginBusy('Activating Free Trial', 'Updating subscription database...');
+      api('startFreeTrial', {}, function (r) {
+        endBusy();
+        if (r && r.success) {
+          toast('🎉 ' + (r.message || '14-Day Free Trial activated!'), false);
+          setTimeout(function () { window.location.href = 'index.html'; }, 1200);
+        } else {
+          toast('❌ ' + (r ? r.message : 'Trial activation failed'), true);
+        }
+      }, function (err) {
+        endBusy();
+        toast('❌ Error: ' + err.message, true);
+      });
+    }
+  </script>
+  <script src="razorpay.js"></script>
+</body>
+</html>

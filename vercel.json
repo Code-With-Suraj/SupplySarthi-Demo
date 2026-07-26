@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "cleanUrls": true,
+  "routes": [
+    { "source": "/subscription", "destination": "/subscription.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
