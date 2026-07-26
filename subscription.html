@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>SupplySarthi | Flexible Subscription Plans</title>
+  <title>SupplySarthi | Subscription Plan</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -25,7 +25,7 @@
     
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      background: #f1f5f9;
+      background: linear-gradient(135deg, #f1f5f9 0%, #e8f5e9 50%, #f1f5f9 100%);
       color: var(--text);
       margin: 0;
       padding: 0;
@@ -33,14 +33,14 @@
     }
 
     .sub-container {
-      max-width: 1100px;
+      max-width: 680px;
       margin: 0 auto;
       padding: 40px 20px 60px;
     }
 
     .sub-header {
       text-align: center;
-      margin-bottom: 48px;
+      margin-bottom: 36px;
     }
 
     .sub-badge {
@@ -57,7 +57,7 @@
     }
 
     .sub-title {
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 800;
       color: #0f172a;
       margin: 0 0 12px;
@@ -65,41 +65,123 @@
     }
 
     .sub-subtitle {
-      font-size: 18px;
+      font-size: 16px;
       color: #64748b;
       margin: 0 auto;
-      max-width: 600px;
+      max-width: 520px;
       line-height: 1.6;
     }
 
-    .plans-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 32px;
-      align-items: stretch;
+    /* ——— Trial Section ——— */
+    .trial-section {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border: 2px dashed #f59e0b;
+      border-radius: 20px;
+      padding: 24px 28px;
+      margin-bottom: 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
     }
 
+    .trial-section::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      right: -40px;
+      width: 100px;
+      height: 100px;
+      background: rgba(245, 158, 11, 0.1);
+      border-radius: 50%;
+    }
+
+    .trial-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+
+    .trial-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #92400e;
+      margin: 0 0 6px;
+    }
+
+    .trial-desc {
+      font-size: 13px;
+      color: #a16207;
+      margin: 0 0 16px;
+      line-height: 1.5;
+    }
+
+    .trial-badge-text {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(245, 158, 11, 0.15);
+      color: #92400e;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .btn-trial {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #dcfce7, #86efac);
+      color: #15803d;
+      border: 2px solid #22c55e;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(34, 197, 94, 0.15);
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-trial:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(34, 197, 94, 0.25);
+    }
+
+    .trial-used-msg {
+      background: rgba(100, 116, 139, 0.08);
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 600;
+      display: none;
+    }
+
+    .trial-used-msg i {
+      color: #94a3b8;
+      margin-right: 6px;
+    }
+
+    /* ——— Plan Card ——— */
     .plan-card {
       background: #ffffff;
-      border: 2px solid var(--border);
+      border: 2px solid var(--primary);
       border-radius: 24px;
       padding: 36px 28px;
       position: relative;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.03);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 20px 25px -5px rgba(22, 101, 52, 0.12);
+      background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
     }
 
     .plan-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-lg);
-    }
-
-    .plan-card.featured {
-      border-color: var(--primary);
-      background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
-      box-shadow: 0 20px 25px -5px rgba(22, 101, 52, 0.12);
+      box-shadow: 0 25px 35px -5px rgba(22, 101, 52, 0.18);
     }
 
     .featured-tag {
@@ -138,37 +220,26 @@
       margin-bottom: 24px;
       padding-bottom: 24px;
       border-bottom: 1px solid #f1f5f9;
-    }
-
-    .promo-banner {
-      background: #fef3c7;
-      color: #92400e;
-      border: 1px dashed #f59e0b;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      display: inline-block;
-    }
-
-    .price-original {
-      text-decoration: line-through;
-      color: #94a3b8;
-      font-size: 16px;
-      font-weight: 600;
-      margin-right: 6px;
+      text-align: center;
     }
 
     .price-value {
-      font-size: 42px;
+      font-size: 52px;
       font-weight: 800;
       color: #0f172a;
+      line-height: 1;
     }
 
     .price-period {
-      font-size: 16px;
+      font-size: 18px;
       color: #64748b;
+      font-weight: 600;
+    }
+
+    .price-note {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 6px;
       font-weight: 600;
     }
 
@@ -208,34 +279,87 @@
       border: none;
       transition: all 0.2s ease;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      font-family: inherit;
     }
 
     .btn-plan-primary {
-      background: var(--primary);
+      background: linear-gradient(135deg, #166534, #15803d);
       color: #ffffff;
     }
 
     .btn-plan-primary:hover {
-      background: var(--primary-dark);
+      background: linear-gradient(135deg, #14532d, #166534);
       box-shadow: 0 10px 15px -3px rgba(22, 101, 52, 0.3);
+      transform: translateY(-2px);
     }
 
-    .btn-plan-outline {
-      background: #ffffff;
-      color: var(--primary);
-      border: 2px solid var(--primary);
-    }
-
-    .btn-plan-outline:hover {
-      background: #f0fdf4;
-    }
-
-    .trial-badge {
+    .plan-footer {
       text-align: center;
-      font-size: 13px;
+      font-size: 12px;
       color: #64748b;
-      margin-top: 12px;
+      margin-top: 14px;
       font-weight: 600;
+    }
+
+    .plan-footer i {
+      color: #22c55e;
+      margin-right: 4px;
+    }
+
+    /* ——— Trust Section ——— */
+    .trust-section {
+      margin-top: 32px;
+      text-align: center;
+    }
+
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .trust-item {
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 12px;
+      text-align: center;
+    }
+
+    .trust-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .trust-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ——— Back Link ——— */
+    .back-link {
+      text-align: center;
+      margin-top: 28px;
+    }
+
+    .back-link a {
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.2s;
+    }
+
+    .back-link a:hover {
+      opacity: 0.8;
     }
 
     .toast-box {
@@ -250,99 +374,106 @@
       z-index: 9999;
       display: none;
       box-shadow: var(--shadow-lg);
+      max-width: 380px;
+      font-size: 14px;
     }
     .toast-box.show { display: block; }
+
+    @media (max-width: 480px) {
+      .sub-title { font-size: 26px; }
+      .price-value { font-size: 42px; }
+      .trust-grid { grid-template-columns: 1fr; }
+      .sub-container { padding: 24px 16px 40px; }
+    }
   </style>
 </head>
 <body>
 
   <div class="sub-container">
     <div class="sub-header">
-      <div class="sub-badge">🥈 Flexible Monthly &amp; Annual Options</div>
-      <h1 class="sub-title">Upgrade Your SupplySarthi Account</h1>
-      <p class="sub-subtitle">Streamline orders, deliveries, invoices, ledgers, and WhatsApp notifications with full business automation.</p>
+      <div class="sub-badge">📦 SupplySarthi Subscription</div>
+      <h1 class="sub-title">Activate Your SupplySarthi Account</h1>
+      <p class="sub-subtitle">Full business automation — orders, deliveries, invoices, ledgers, WhatsApp notifications and more.</p>
+    </div>
+
+    <!-- FREE TRIAL SECTION (shown only if trial not used) -->
+    <div id="trialSection" class="trial-section">
+      <div class="trial-icon">🎁</div>
+      <div class="trial-badge-text"><i class="fa fa-clock"></i> One-Time Offer</div>
+      <h3 class="trial-title">14-Day Free Trial</h3>
+      <p class="trial-desc">Try all features free for 14 days. No card required. Available only once per supplier account.</p>
+      <button class="btn-trial" onclick="startFreeTrialDirect()">
+        <i class="fa fa-gift" style="font-size:18px;"></i> Start Free Trial →
+      </button>
+    </div>
+
+    <!-- TRIAL ALREADY USED MESSAGE -->
+    <div id="trialUsedMsg" class="trial-used-msg">
+      <i class="fa fa-circle-check"></i> Your 14-day free trial has already been used. Subscribe below to continue using SupplySarthi.
+    </div>
+
+    <!-- SINGLE PLAN CARD: ₹499 / 1 Month -->
+    <div class="plan-card">
+      <div class="featured-tag">⭐ Full Access Plan</div>
+      <div class="plan-name">
+        <span>Monthly Plan</span>
+      </div>
+      <p class="plan-desc">Complete business automation with unlimited clients, orders, invoices, and all premium features.</p>
       
-      <div id="freeTrialBtnContainer" style="margin-top:20px;">
-        <button onclick="startFreeTrialDirect()" style="background:linear-gradient(135deg,#dcfce7,#86efac);color:#15803d;border:2px solid #22c55e;padding:12px 24px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 20px rgba(34,197,94,0.15);transition:transform 0.2s;">
-          <i class="fa fa-gift" style="font-size:18px;"></i> Start 14-Day Free Trial (No Card Required)
-        </button>
+      <div class="plan-price-box">
+        <div>
+          <span class="price-value">₹499</span>
+          <span class="price-period">/month</span>
+        </div>
+        <div class="price-note">One-time monthly subscription • No auto-renewal</div>
+      </div>
+
+      <ul class="feature-list">
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Clients & Orders</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Sites & Deliveries</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Order & Delivery Management</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>GST Invoice Generation & PDFs</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Delivery Challan Generation</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Account Ledger & Payment Tracking</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Client Portal Access</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>WhatsApp Notifications</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Client-wise Price Lists</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Daily & Monthly Invoicing</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Sales & Outstanding Reports</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Credit & Debit Notes</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Tally XML Export</span></li>
+        <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Dedicated WhatsApp Support</span></li>
+      </ul>
+
+      <button class="btn-plan btn-plan-primary" onclick="startSubscriptionCheckout()">
+        <i class="fa fa-bolt" style="margin-right:6px;"></i> Subscribe for ₹499 →
+      </button>
+      <div class="plan-footer">
+        <i class="fa fa-shield-halved"></i> Secure Razorpay Payment • Instant Activation
       </div>
     </div>
 
-    <div class="plans-grid">
-
-      <!-- Monthly Plan Card -->
-      <div class="plan-card">
-        <div class="plan-name">
-          <span>Monthly Plan</span>
+    <!-- TRUST BADGES -->
+    <div class="trust-section">
+      <div class="trust-grid">
+        <div class="trust-item">
+          <div class="trust-icon">🔒</div>
+          <div class="trust-label">Secure Payment</div>
         </div>
-        <p class="plan-desc">Perfect for full business automation with unlimited usage.</p>
-        
-        <div class="plan-price-box">
-          <div class="promo-banner">🎉 First Month Promo: Only ₹499!</div>
-          <div>
-            <span class="price-value">₹999</span>
-            <span class="price-period">/month</span>
-          </div>
+        <div class="trust-item">
+          <div class="trust-icon">⚡</div>
+          <div class="trust-label">Instant Activation</div>
         </div>
-
-        <ul class="feature-list">
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Clients</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Orders & Sites</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Order & Delivery Management</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Client & Site Management</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>GST Invoice Generation</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Delivery Challan & PDF</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Account Ledger Management</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Payment Tracking</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Client Portal</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>WhatsApp Notifications</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Client-wise Price Lists</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Daily & Monthly Invoicing</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Sales & Outstanding Reports</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Credit & Debit Notes</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Dedicated WhatsApp Support</span></li>
-        </ul>
-
-        <button class="btn-plan btn-plan-outline" onclick="startSubscriptionCheckout('monthly', true)">
-          Start for ₹499 →
-        </button>
-        <div id="freeTrialBadge" class="trial-badge">🎁 Includes 14 days free trial eligibility</div>
+        <div class="trust-item">
+          <div class="trust-icon">📞</div>
+          <div class="trust-label">WhatsApp Support</div>
+        </div>
       </div>
+    </div>
 
-      <!-- Yearly Plan Card (Featured) -->
-      <div class="plan-card featured">
-        <div class="featured-tag">⭐ Best Value & Annual Savings</div>
-        <div class="plan-name">
-          <span>Yearly Plan</span>
-        </div>
-        <p class="plan-desc">Maximum savings for long-term growth and locked-in pricing.</p>
-        
-        <div class="plan-price-box">
-          <div class="promo-banner">🎉 Save ₹1,989 Every Year</div>
-          <div>
-            <span class="price-original">₹11,988</span>
-            <span class="price-value">₹9,999</span>
-            <span class="price-period">/year</span>
-          </div>
-        </div>
-
-        <ul class="feature-list">
-          <li class="feature-item"><i class="fa-solid fa-star" style="color:#eab308;"></i> <strong>Everything in Monthly Plan</strong></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Clients & Orders</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Unlimited Sites</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Priority Setup & Migration</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Dedicated On-Call Support</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>All Future Updates Included</span></li>
-          <li class="feature-item"><i class="fa-solid fa-check-circle"></i> <span>Price Locked Forever</span></li>
-        </ul>
-
-        <button class="btn-plan btn-plan-primary" onclick="startSubscriptionCheckout('yearly', false)">
-          Get Yearly Plan →
-        </button>
-        <div class="trial-badge">🔒 Locked price guarantee + Priority setup</div>
-      </div>
-
+    <!-- BACK LINK -->
+    <div class="back-link">
+      <a href="index.html"><i class="fa fa-arrow-left"></i> Back to SupplySarthi</a>
     </div>
   </div>
 
@@ -361,12 +492,14 @@
   <script src="config.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      // Check subscription info to show/hide trial section
       api('getSubscriptionInfo', {}, function (r) {
         if (r && (r.hasUsedTrial || r.canUseFreeTrial === false || r.plan)) {
-          var btnContainer = document.getElementById('freeTrialBtnContainer');
-          if (btnContainer) btnContainer.style.display = 'none';
-          var trialBadge = document.getElementById('freeTrialBadge');
-          if (trialBadge) trialBadge.style.display = 'none';
+          // Trial already used — hide trial section, show message
+          var trialSec = document.getElementById('trialSection');
+          if (trialSec) trialSec.style.display = 'none';
+          var trialUsed = document.getElementById('trialUsedMsg');
+          if (trialUsed) trialUsed.style.display = 'block';
         }
       });
     });
@@ -376,7 +509,7 @@
       t.textContent = msg;
       t.style.background = isErr ? '#b91c1c' : '#166534';
       t.classList.add('show');
-      setTimeout(function () { t.classList.remove('show'); }, 3500);
+      setTimeout(function () { t.classList.remove('show'); }, 4000);
     }
     function beginBusy(title, subtitle) {
       document.getElementById('busyTitle').textContent = title || 'Please wait';
@@ -398,7 +531,7 @@
       .catch(function (err) { if (errCb) errCb(err); else toast('Error: ' + err.message, true); });
     }
     function startFreeTrialDirect() {
-      beginBusy('Activating Free Trial', 'Updating subscription database...');
+      beginBusy('Activating Free Trial', 'Setting up your 14-day trial...');
       api('startFreeTrial', {}, function (r) {
         endBusy();
         if (r && r.success) {
