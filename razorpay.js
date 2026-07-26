@@ -3,18 +3,19 @@
 // ============================================================
 
 /**
- * Initiates Razorpay ₹499 Subscription Payment Flow
- * Single plan: ₹499 / 1 Month
+ * Initiates Razorpay Subscription Payment Flow
+ * @param {string} planType - 'monthly' (₹499/mo) or 'yearly' (₹9,999/yr)
  */
-function startSubscriptionCheckout() {
+function startSubscriptionCheckout(planType) {
   if (typeof Razorpay === 'undefined') {
     toast('❌ Razorpay SDK not loaded. Please check your internet connection.', true);
     return;
   }
 
+  var selectedPlan = planType === 'yearly' ? 'yearly' : 'monthly';
   beginBusy('Preparing Order...', 'Connecting to Razorpay');
 
-  api('createRazorpayOrder', {}, function (res) {
+  api('createRazorpayOrder', { planType: selectedPlan }, function (res) {
     endBusy();
     if (!res || !res.success) {
       toast('❌ Failed to initiate payment: ' + (res ? res.message : 'Unknown error'), true);
@@ -28,11 +29,11 @@ function startSubscriptionCheckout() {
       amount: res.amount,
       currency: res.currency || 'INR',
       name: CONFIG.APP_NAME || 'SupplySarthi',
-      description: 'SupplySarthi Monthly Subscription (₹499)',
+      description: selectedPlan === 'yearly' ? 'SupplySarthi Yearly Subscription (₹9,999)' : 'SupplySarthi Monthly Subscription (₹499)',
       image: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
       order_id: res.orderId,
       handler: function (response) {
-        verifySubscriptionPayment(response);
+        verifySubscriptionPayment(response, selectedPlan);
       },
       prefill: {
         name: prefillData.name || '',
@@ -64,24 +65,21 @@ function startSubscriptionCheckout() {
  * Verifies Razorpay Payment Signature with GAS Backend
  * Also captures and sends customer company, mobile, email for logging
  */
-function verifySubscriptionPayment(rzpResponse) {
+function verifySubscriptionPayment(rzpResponse, planType) {
   beginBusy('Verifying Payment...', 'Updating your subscription status');
 
-  // Fetch Razorpay payment details to get customer info (company, mobile, email)
   var paymentId = rzpResponse.razorpay_payment_id || '';
 
   var payload = {
     razorpay_order_id: rzpResponse.razorpay_order_id,
     razorpay_payment_id: paymentId,
     razorpay_signature: rzpResponse.razorpay_signature,
-    planType: 'monthly',
-    customerCompany: '', // Will be filled from Razorpay prefill data
+    planType: planType || 'monthly',
+    customerCompany: '',
     customerMobile: '',
     customerEmail: ''
   };
 
-  // Try to extract customer info from the Razorpay checkout instance
-  // The prefill data is the most reliable source
   try {
     var prefillName = document.querySelector('[name="card[name]"]');
     var prefillEmail = document.querySelector('[name="email"]');
