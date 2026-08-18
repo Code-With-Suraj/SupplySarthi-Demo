@@ -2919,3 +2919,30 @@ tbody tr:hover td {
   box-shadow: var(--shadow);
 }
 
+/* ===== CSV BULK UPDATE DROPZONE & MODAL ===== */
+.csv-upload-dropzone {
+  border: 2px dashed #bbf7d0;
+  background: #f0fdf4;
+  border-radius: 12px;
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.csv-upload-dropzone:hover,
+.csv-upload-dropzone.dragover {
+  border-color: var(--green-bright);
+  background: #dcfce7;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.12);
+}
+
+.badge.bo {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #ffedd5;
+}
+
+

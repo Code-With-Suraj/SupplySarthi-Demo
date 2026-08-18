@@ -384,6 +384,7 @@
               <div class="card-ttl">Items / Products</div>
               <div class="card-acts">
                 <div class="search-wrap"><i class="fa fa-search"></i><input type="text" placeholder="Search..." oninput="filterTbl('itemsTbody',this.value)"></div>
+                <button class="btn btn-s" onclick="openBulkItemModal()"><i class="fa fa-file-csv" style="color:var(--green-mid);margin-right:4px;"></i> Bulk Update (CSV)</button>
                 <button class="btn btn-p" onclick="openItemModal()"><i class="fa fa-plus"></i> Add Item</button>
               </div>
             </div>
@@ -1033,6 +1034,83 @@
     </div>
   </div>
 
+  <!-- Client Sites Management Modal -->
+  <div class="modal-ov" id="sitesModal">
+    <div class="modal modal-lg" style="max-width:680px;">
+      <div class="m-hdr">
+        <div>
+          <div class="m-ttl" id="sitesModalTitle">Manage Delivery Sites</div>
+          <div style="font-size:11px;color:var(--muted);" id="sitesModalSub">Registered Delivery Locations</div>
+        </div>
+        <button class="m-close" onclick="closeModal('sitesModal')">×</button>
+      </div>
+
+      <input type="hidden" id="siteClientIdHidden">
+
+      <!-- Existing Sites List -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Registered Sites</div>
+        <div id="sitesListEl" style="max-height:220px;overflow-y:auto;padding-right:4px;"></div>
+      </div>
+
+      <!-- Add/Edit Site Form -->
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-top:12px;">
+        <div style="font-weight:800;font-size:13px;color:var(--green-dark);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+          <span id="siteFormTitle">Add New Delivery Site</span>
+          <button type="button" class="btn btn-s btn-sm" onclick="resetSiteForm_()"><i class="fa fa-rotate-left"></i> Reset Form</button>
+        </div>
+        <input type="hidden" id="siteEditId">
+
+        <div class="frow">
+          <div class="fg">
+            <label>Company / Site Name*</label>
+            <input id="sCompanyName" placeholder="e.g. Warehouse 1, Sector 62 Branch">
+          </div>
+          <div class="fg">
+            <label>Status</label>
+            <select id="sStat">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="frow one">
+          <div class="fg">
+            <label>Full Delivery Address*</label>
+            <input id="sAddress" placeholder="Building no, Street, Landmark, City">
+          </div>
+        </div>
+
+        <div class="frow">
+          <div class="fg">
+            <label>State</label>
+            <select id="sState"></select>
+          </div>
+          <div class="fg">
+            <label>State Code</label>
+            <input id="sStateCode" placeholder="e.g. 27" readonly style="background:var(--bg);">
+          </div>
+        </div>
+
+        <div class="frow">
+          <div class="fg">
+            <label>Responsible Person</label>
+            <input id="sRespPerson" placeholder="Manager / Receiver Name">
+          </div>
+          <div class="fg">
+            <label>Contact Phone</label>
+            <input id="sRespPhone" placeholder="Mobile Number">
+          </div>
+        </div>
+
+        <button class="btn btn-p btn-full" style="margin-top:12px;" onclick="saveSite()">
+          <i class="fa fa-save"></i> <span id="saveSiteBtnText">Save Site</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Item Modal -->
   <div class="modal-ov" id="itemModal">
     <div class="modal">
@@ -1067,13 +1145,76 @@
       </div>
       <div class="frow one">
         <div class="fg">
-          <label>Item Image</label>
-          <input id="iImg" type="file" accept="image/*" onchange="previewItemImage()">
+          <label>Item Image (Image URL or File Upload)</label>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <input id="iImgUrl" type="url" placeholder="Paste Image URL (e.g. https://example.com/item.jpg)" oninput="previewItemImageUrl()" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);font-weight:700;">
+              <span style="flex:1;height:1px;background:var(--border);"></span>
+              <span>OR UPLOAD FILE</span>
+              <span style="flex:1;height:1px;background:var(--border);"></span>
+            </div>
+            <input id="iImg" type="file" accept="image/*" onchange="previewItemImageFile()">
+          </div>
           <input type="hidden" id="iImgExisting">
           <div id="iImgPreview" style="display:none;margin-top:8px;"></div>
         </div>
       </div>
       <button class="btn btn-p btn-full" style="margin-top:8px;" onclick="saveItem()"><i class="fa fa-save"></i> Save Item</button>
+    </div>
+  </div>
+
+  <!-- Bulk Item CSV Modal -->
+  <div class="modal-ov" id="bulkItemModal">
+    <div class="modal modal-lg" style="max-width:760px;">
+      <div class="m-hdr">
+        <div>
+          <div class="m-ttl"><i class="fa fa-file-csv" style="color:var(--green-bright);margin-right:6px;"></i> Bulk Update / Import Items</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">Upload CSV to create new items or update existing prices &amp; details</div>
+        </div>
+        <button class="m-close" onclick="closeModal('bulkItemModal')">×</button>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <button class="btn btn-s btn-sm" onclick="downloadCSVTemplate()"><i class="fa fa-download"></i> Download CSV Template</button>
+        <button class="btn btn-s btn-sm" onclick="exportItemsCSV()"><i class="fa fa-file-export"></i> Export Current Items CSV</button>
+      </div>
+
+      <div class="csv-upload-dropzone" id="csvDropzone" onclick="document.getElementById('csvFileInput').click()" ondragover="handleCsvDragOver(event)" ondragleave="handleCsvDragLeave(event)" ondrop="handleCsvDrop(event)">
+        <i class="fa fa-cloud-arrow-up" style="font-size:32px;color:var(--green-mid);margin-bottom:8px;"></i>
+        <div style="font-weight:700;font-size:14px;color:var(--text);">Click or Drag &amp; Drop CSV File Here</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">Columns: ItemID, ItemName, Category, Unit, DefaultPrice, HSN, GSTPercent, Status, ImageUrl</div>
+        <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="handleCSVFileSelect(event)">
+      </div>
+
+      <div id="csvStatusBox" style="display:none;margin-top:14px;padding:10px 14px;border-radius:8px;font-size:13px;"></div>
+
+      <div id="csvPreviewSection" style="display:none;margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:800;color:var(--text);" id="csvPreviewTitle">Items Preview</div>
+          <div style="font-size:12px;color:var(--muted);" id="csvPreviewStats"></div>
+        </div>
+        <div class="tbl-wrap" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>ID</th>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Unit</th>
+                <th>Price ₹</th>
+                <th>GST %</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="csvPreviewTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <button class="btn btn-p btn-full" style="margin-top:16px;" id="btnExecuteBulkUpload" onclick="executeBulkItemUpload()" disabled>
+        <i class="fa fa-upload"></i> Upload &amp; Apply Bulk Changes
+      </button>
     </div>
   </div>
 

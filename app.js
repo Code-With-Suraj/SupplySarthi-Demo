@@ -63,7 +63,11 @@ function getEmoji(name) {
 function itemImageHtml_(base64, sizePx) {
   var sz = sizePx || 40;
   if (!base64 || !String(base64).trim()) return '';
-  return '<img src="' + base64 + '" style="width:' + sz + 'px;height:' + sz + 'px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">';
+  var src = String(base64).trim();
+  if (!src.startsWith('data:') && !src.startsWith('http://') && !src.startsWith('https://')) {
+    src = 'data:image/jpeg;base64,' + src;
+  }
+  return '<img src="' + src + '" style="width:' + sz + 'px;height:' + sz + 'px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">';
 }
 
 // ===== SKELETON LOADING HELPERS =====
@@ -484,7 +488,10 @@ function renderAdminClientRow_(c) {
 
 function renderAdminItemRow_(i) {
   var gst = parseFloat(i.GSTPercent) || 0;
-  return '<tr><td>' + i.ItemID + '</td><td><strong>' + i.ItemName + '</strong></td><td>' + (i.HSN || '-') + '</td><td>' + i.Unit + '</td><td>\u20b9' + fmt(i.DefaultPrice) + '</td>' +
+  var thumb = i.ImageBase64 ? itemImageHtml_(i.ImageBase64, 32) : '<div style="width:32px;height:32px;border-radius:6px;background:var(--border-light,#f1f5f9);display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 auto;">' + getEmoji(i.ItemName) + '</div>';
+  return '<tr><td>' + i.ItemID + '</td>' +
+    '<td><div style="display:flex;align-items:center;gap:10px;">' + thumb + '<div><strong>' + i.ItemName + '</strong>' + (i.Category ? '<br><small style="color:var(--muted);">' + i.Category + '</small>' : '') + '</div></div></td>' +
+    '<td>' + (i.HSN || '-') + '</td><td>' + i.Unit + '</td><td>\u20b9' + fmt(i.DefaultPrice) + '</td>' +
     '<td>' + (gst ? (gst.toFixed(2) + '%') : '-') + '</td>' +
     '<td><span class="badge ' + (i.Status === 'Active' ? 'bg' : 'bgr') + '">' + i.Status + '</span></td>' +
     '<td><button class="btn btn-s btn-sm btn-ico" onclick="editItem(this)" data-i=\'' + JSON.stringify(i).replace(/'/g, "&#39;") + '\' ><i class="fa fa-edit"></i></button></td></tr>';
@@ -1034,19 +1041,19 @@ function doLogout(silent) {
   stopSessionMonitor();
   clearSession();
   try {
-    sessionStorage.setItem('skip_market_redirect', '1');
+    sessionStorage.removeItem('skip_market_redirect');
   } catch (e) {}
   APP = { role: null, clientId: null, clientName: null, allClients: [], allItems: [], cart: {}, deliveryOrderId: null, subscriptionInfo: null };
-  showScreen('loginScreen');
-  document.getElementById('adminPass').value = '';
-  document.getElementById('clientPhone').value = '';
-  document.getElementById('clientPass').value = '';
   var banner = document.getElementById('subBanner');
   if (banner) banner.classList.remove('visible');
   var spacer = document.getElementById('subBannerSpacer');
   if (spacer) spacer.style.height = '0';
-  applyLoginPageParam();
-  if (!silent) toast('Logged out');
+
+  var marketUrl = (typeof CONFIG !== 'undefined' && CONFIG.MARKETPLACE_URL) 
+    ? CONFIG.MARKETPLACE_URL 
+    : 'https://supply-sarthi-market.vercel.app';
+
+  window.location.href = marketUrl;
 }
 
 // ===== SUBSCRIPTION BANNER LOGIC =====
@@ -1619,6 +1626,8 @@ function openSitesModal(clientId, clientName) {
   document.getElementById('sitesModalTitle').textContent = 'Manage Sites — ' + (clientName || clientId);
   document.getElementById('sitesModalSub').textContent = 'Client ID: ' + clientId;
   document.getElementById('siteClientIdHidden').value = clientId;
+  populateAllStateDropdowns_();
+  bindStateCodeAutoFill_('sState', 'sStateCode');
   resetSiteForm_();
   loadClientSitesModal_(clientId);
   openModal('sitesModal');
@@ -1633,7 +1642,8 @@ function resetSiteForm_() {
   document.getElementById('sRespPhone').value = '';
   var stSel = document.getElementById('sState');
   if (stSel) stSel.value = '';
-  document.getElementById('sStateCode').value = '';
+  var stCode = document.getElementById('sStateCode');
+  if (stCode) stCode.value = '';
   document.getElementById('siteFormTitle').textContent = 'Add New Site';
   document.getElementById('saveSiteBtnText').textContent = 'Save Site';
 }
@@ -1693,16 +1703,28 @@ function saveSite() {
   if (!clientId) { toast('Client ID missing', true); return; }
   if (!companyName || !address) { toast('Company Name & Address are required', true); return; }
 
+  var stateEl = document.getElementById('sState');
+  var stateCodeEl = document.getElementById('sStateCode');
+
   var payload = {
     siteId: siteId,
+    SiteID: siteId,
     clientId: clientId,
+    ClientID: clientId,
     companyName: companyName,
+    CompanyName: companyName,
     address: address,
-    state: document.getElementById('sState').value.trim(),
-    stateCode: document.getElementById('sStateCode').value.trim(),
+    Address: address,
+    state: stateEl ? stateEl.value.trim() : '',
+    State: stateEl ? stateEl.value.trim() : '',
+    stateCode: stateCodeEl ? stateCodeEl.value.trim() : '',
+    StateCode: stateCodeEl ? stateCodeEl.value.trim() : '',
     responsiblePerson: document.getElementById('sRespPerson').value.trim(),
+    ResponsiblePerson: document.getElementById('sRespPerson').value.trim(),
     responsiblePhone: document.getElementById('sRespPhone').value.trim(),
-    status: document.getElementById('sStat').value
+    ResponsiblePhone: document.getElementById('sRespPhone').value.trim(),
+    status: document.getElementById('sStat').value,
+    Status: document.getElementById('sStat').value
   };
 
   var action = siteId ? 'updateClientSite' : 'addClientSite';
@@ -1711,6 +1733,7 @@ function saveSite() {
       toast(siteId ? 'Site updated!' : 'Site added!');
       resetSiteForm_();
       loadClientSitesModal_(clientId);
+      if (typeof loadClients === 'function') loadClients();
     } else {
       toast(r ? (r.message || 'Failed to save site') : 'Error saving site', true);
     }
@@ -1740,7 +1763,30 @@ function openItemModal(i) {
   document.getElementById('iHSN').value = i ? i.HSN : '';
   document.getElementById('iGST').value = i ? i.GSTPercent : '0';
   document.getElementById('iStat').value = i ? i.Status : 'Active';
-  document.getElementById('iImgExisting').value = i ? (i.ImageBase64 || '') : '';
+  var fileInp = document.getElementById('iImg');
+  if (fileInp) fileInp.value = '';
+
+  var existing = i ? (i.ImageBase64 || '') : '';
+  document.getElementById('iImgExisting').value = existing;
+
+  var urlInp = document.getElementById('iImgUrl');
+  var prev = document.getElementById('iImgPreview');
+
+  if (existing.startsWith('http://') || existing.startsWith('https://')) {
+    urlInp.value = existing;
+    prev.innerHTML = '<img src="' + existing + '" style="max-height:80px;border-radius:6px;border:1px solid var(--border);" onerror="this.style.display=\'none\'">';
+    prev.style.display = 'block';
+  } else if (existing) {
+    urlInp.value = '';
+    var src = existing.startsWith('data:') ? existing : ('data:image/jpeg;base64,' + existing);
+    prev.innerHTML = '<img src="' + src + '" style="max-height:80px;border-radius:6px;border:1px solid var(--border);">';
+    prev.style.display = 'block';
+  } else {
+    urlInp.value = '';
+    prev.innerHTML = '';
+    prev.style.display = 'none';
+  }
+
   document.getElementById('itemModalTtl').textContent = i ? 'Edit Item' : 'Add Item';
   openModal('itemModal');
 }
@@ -1750,17 +1796,40 @@ function editItem(btn) {
   openItemModal(i);
 }
 
-function previewItemImage() {
+function previewItemImageUrl() {
+  var url = document.getElementById('iImgUrl').value.trim();
+  var prev = document.getElementById('iImgPreview');
+  if (url) {
+    prev.innerHTML = '<img src="' + url + '" style="max-height:80px;border-radius:6px;border:1px solid var(--border);" onerror="this.style.display=\'none\'">';
+    prev.style.display = 'block';
+  } else {
+    var existing = document.getElementById('iImgExisting').value;
+    if (existing) {
+      var src = existing.startsWith('data:') || existing.startsWith('http') ? existing : ('data:image/jpeg;base64,' + existing);
+      prev.innerHTML = '<img src="' + src + '" style="max-height:80px;border-radius:6px;border:1px solid var(--border);">';
+      prev.style.display = 'block';
+    } else {
+      prev.innerHTML = '';
+      prev.style.display = 'none';
+    }
+  }
+}
+
+function previewItemImageFile() {
   var inp = document.getElementById('iImg');
   var prev = document.getElementById('iImgPreview');
   if (inp.files && inp.files[0]) {
     var reader = new FileReader();
     reader.onload = function (e) {
-      prev.innerHTML = '<img src="' + e.target.result + '" style="max-height:80px;border-radius:6px;">';
+      prev.innerHTML = '<img src="' + e.target.result + '" style="max-height:80px;border-radius:6px;border:1px solid var(--border);">';
       prev.style.display = 'block';
     };
     reader.readAsDataURL(inp.files[0]);
   }
+}
+
+function previewItemImage() {
+  previewItemImageFile();
 }
 
 function saveItem() {
@@ -1776,26 +1845,350 @@ function saveItem() {
   };
   if (!data.itemName) { toast('Item name is required', true); return; }
 
+  var imgUrl = document.getElementById('iImgUrl').value.trim();
   var fileInput = document.getElementById('iImg');
-  if (fileInput.files && fileInput.files[0]) {
+
+  if (fileInput && fileInput.files && fileInput.files[0]) {
     var reader = new FileReader();
     reader.onload = function (e) {
-      data.imageBase64 = e.target.result;
+      data.imageDataUrl = e.target.result;
       api('saveItem', data, function (r) {
+        if (r && r.success === false) {
+          toast(r.message || 'Error saving item', true);
+          return;
+        }
         toast('Item saved!');
         closeModal('itemModal');
         loadItems();
       });
     };
     reader.readAsDataURL(fileInput.files[0]);
-  } else {
-    data.imageBase64 = document.getElementById('iImgExisting').value;
+  } else if (imgUrl) {
+    data.imageDataUrl = imgUrl;
     api('saveItem', data, function (r) {
+      if (r && r.success === false) {
+        toast(r.message || 'Error saving item', true);
+        return;
+      }
+      toast('Item saved!');
+      closeModal('itemModal');
+      loadItems();
+    });
+  } else {
+    data.imageDataUrl = document.getElementById('iImgExisting').value;
+    api('saveItem', data, function (r) {
+      if (r && r.success === false) {
+        toast(r.message || 'Error saving item', true);
+        return;
+      }
       toast('Item saved!');
       closeModal('itemModal');
       loadItems();
     });
   }
+}
+
+// ===== CSV BULK UPDATE FUNCTIONS =====
+APP.parsedCsvItems = [];
+
+function parseCSV(text) {
+  var lines = [];
+  var currentLine = [];
+  var currentVal = '';
+  var inQuotes = false;
+
+  if (text.charCodeAt(0) === 0xFEFF) {
+    text = text.substr(1);
+  }
+
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    var nextCh = text[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && nextCh === '"') {
+        currentVal += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        currentVal += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        currentLine.push(currentVal.trim());
+        currentVal = '';
+      } else if (ch === '\r') {
+        if (nextCh === '\n') { i++; }
+        currentLine.push(currentVal.trim());
+        if (currentLine.some(function (v) { return v !== ''; })) lines.push(currentLine);
+        currentLine = [];
+        currentVal = '';
+      } else if (ch === '\n') {
+        currentLine.push(currentVal.trim());
+        if (currentLine.some(function (v) { return v !== ''; })) lines.push(currentLine);
+        currentLine = [];
+        currentVal = '';
+      } else {
+        currentVal += ch;
+      }
+    }
+  }
+
+  if (currentVal || currentLine.length > 0) {
+    currentLine.push(currentVal.trim());
+    if (currentLine.some(function (v) { return v !== ''; })) lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+function openBulkItemModal() {
+  APP.parsedCsvItems = [];
+  var fileInp = document.getElementById('csvFileInput');
+  if (fileInp) fileInp.value = '';
+
+  var statusBox = document.getElementById('csvStatusBox');
+  if (statusBox) { statusBox.style.display = 'none'; statusBox.innerHTML = ''; }
+
+  var prevSec = document.getElementById('csvPreviewSection');
+  if (prevSec) prevSec.style.display = 'none';
+
+  var btnExec = document.getElementById('btnExecuteBulkUpload');
+  if (btnExec) btnExec.disabled = true;
+
+  openModal('bulkItemModal');
+}
+
+function downloadCSVTemplate() {
+  var headers = ['ItemID', 'ItemName', 'Category', 'Unit', 'DefaultPrice', 'HSN', 'GSTPercent', 'Status', 'ImageUrl'];
+  var sampleRows = [
+    ['', 'Fresh Milk 1L', 'Dairy', 'Litre', '60.00', '0401', '0', 'Active', 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200'],
+    ['', 'Paneer 200g', 'Dairy', 'Piece', '90.00', '0406', '5', 'Active', '']
+  ];
+  var csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(',')].concat(sampleRows.map(function (r) {
+    return r.map(function (val) { return '"' + String(val).replace(/"/g, '""') + '"'; }).join(',');
+  })).join('\n');
+
+  var encodedUri = encodeURI(csvContent);
+  var link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', 'SupplySarthi_Item_Template.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportItemsCSV() {
+  var items = APP.allItems || [];
+  if (!items || !items.length) {
+    toast('No items available to export', true);
+    return;
+  }
+
+  var headers = ['ItemID', 'ItemName', 'Category', 'Unit', 'DefaultPrice', 'HSN', 'GSTPercent', 'Status', 'ImageUrl'];
+  var rows = items.map(function (item) {
+    var img = item.ImageBase64 || '';
+    if (img.length > 300) img = '[Base64 Image]';
+    return [
+      item.ItemID || '',
+      item.ItemName || '',
+      item.Category || 'General',
+      item.Unit || 'Kg',
+      item.DefaultPrice !== undefined ? item.DefaultPrice : 0,
+      item.HSN || '',
+      item.GSTPercent !== undefined ? item.GSTPercent : 0,
+      item.Status || 'Active',
+      img
+    ];
+  });
+
+  var csvRows = [headers.join(',')].concat(rows.map(function (r) {
+    return r.map(function (val) { return '"' + String(val).replace(/"/g, '""') + '"'; }).join(',');
+  }));
+
+  var blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'SupplySarthi_Catalog_' + (new Date().toISOString().slice(0, 10)) + '.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function handleCsvDragOver(e) {
+  e.preventDefault();
+  var dropzone = document.getElementById('csvDropzone');
+  if (dropzone) dropzone.classList.add('dragover');
+}
+
+function handleCsvDragLeave(e) {
+  e.preventDefault();
+  var dropzone = document.getElementById('csvDropzone');
+  if (dropzone) dropzone.classList.remove('dragover');
+}
+
+function handleCsvDrop(e) {
+  e.preventDefault();
+  var dropzone = document.getElementById('csvDropzone');
+  if (dropzone) dropzone.classList.remove('dragover');
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+    processCsvFile(e.dataTransfer.files[0]);
+  }
+}
+
+function handleCSVFileSelect(e) {
+  if (e.target.files && e.target.files[0]) {
+    processCsvFile(e.target.files[0]);
+  }
+}
+
+function processCsvFile(file) {
+  var reader = new FileReader();
+  reader.onload = function (evt) {
+    var content = evt.target.result;
+    var rows = parseCSV(content);
+    if (!rows || rows.length < 2) {
+      showCsvStatus('Invalid or empty CSV file. Minimum 1 header and 1 data row required.', true);
+      return;
+    }
+
+    var rawHeaders = rows[0];
+    var normHeaders = rawHeaders.map(function (h) { return String(h || '').toLowerCase().replace(/[^a-z0-9]/g, ''); });
+
+    var colIdx = {
+      id: normHeaders.indexOf('itemid') > -1 ? normHeaders.indexOf('itemid') : normHeaders.indexOf('id'),
+      name: normHeaders.indexOf('itemname') > -1 ? normHeaders.indexOf('itemname') : (normHeaders.indexOf('name') > -1 ? normHeaders.indexOf('name') : normHeaders.indexOf('productname')),
+      category: normHeaders.indexOf('category') > -1 ? normHeaders.indexOf('category') : normHeaders.indexOf('cat'),
+      unit: normHeaders.indexOf('unit') > -1 ? normHeaders.indexOf('unit') : normHeaders.indexOf('uom'),
+      price: normHeaders.indexOf('defaultprice') > -1 ? normHeaders.indexOf('defaultprice') : (normHeaders.indexOf('price') > -1 ? normHeaders.indexOf('price') : normHeaders.indexOf('rate')),
+      hsn: normHeaders.indexOf('hsn') > -1 ? normHeaders.indexOf('hsn') : normHeaders.indexOf('hsncode'),
+      gst: normHeaders.indexOf('gstpercent') > -1 ? normHeaders.indexOf('gstpercent') : (normHeaders.indexOf('gst') > -1 ? normHeaders.indexOf('gst') : normHeaders.indexOf('gstrate')),
+      status: normHeaders.indexOf('status') > -1 ? normHeaders.indexOf('status') : normHeaders.indexOf('active'),
+      img: normHeaders.indexOf('imageurl') > -1 ? normHeaders.indexOf('imageurl') : (normHeaders.indexOf('imagebase64') > -1 ? normHeaders.indexOf('imagebase64') : normHeaders.indexOf('image'))
+    };
+
+    if (colIdx.name < 0) {
+      showCsvStatus('CSV must contain an "ItemName" or "Name" column.', true);
+      return;
+    }
+
+    var existingMap = {};
+    (APP.allItems || []).forEach(function (it) { existingMap[String(it.ItemID).trim().toLowerCase()] = it; });
+
+    var parsedList = [];
+    var newCount = 0;
+    var updateCount = 0;
+
+    for (var r = 1; r < rows.length; r++) {
+      var row = rows[r];
+      var name = colIdx.name >= 0 ? String(row[colIdx.name] || '').trim() : '';
+      if (!name) continue;
+
+      var id = colIdx.id >= 0 ? String(row[colIdx.id] || '').trim() : '';
+      var isUpdate = id && existingMap[id.toLowerCase()];
+
+      if (isUpdate) updateCount++; else newCount++;
+
+      parsedList.push({
+        ItemID: id,
+        ItemName: name,
+        Category: colIdx.category >= 0 ? String(row[colIdx.category] || '').trim() : 'General',
+        Unit: colIdx.unit >= 0 ? String(row[colIdx.unit] || '').trim() : 'Kg',
+        DefaultPrice: colIdx.price >= 0 ? (parseFloat(row[colIdx.price]) || 0) : 0,
+        HSN: colIdx.hsn >= 0 ? String(row[colIdx.hsn] || '').trim() : '',
+        GSTPercent: colIdx.gst >= 0 ? (parseFloat(row[colIdx.gst]) || 0) : 0,
+        Status: colIdx.status >= 0 ? (String(row[colIdx.status] || '').trim() || 'Active') : 'Active',
+        ImageUrl: colIdx.img >= 0 ? String(row[colIdx.img] || '').trim() : '',
+        isUpdate: !!isUpdate
+      });
+    }
+
+    if (!parsedList.length) {
+      showCsvStatus('No valid item rows found in CSV.', true);
+      return;
+    }
+
+    APP.parsedCsvItems = parsedList;
+    renderCsvPreview(parsedList, newCount, updateCount);
+  };
+  reader.readAsText(file);
+}
+
+function showCsvStatus(msg, isErr) {
+  var box = document.getElementById('csvStatusBox');
+  if (!box) return;
+  box.style.display = 'block';
+  box.style.background = isErr ? '#fef2f2' : '#f0fdf4';
+  box.style.color = isErr ? '#991b1b' : '#166534';
+  box.style.border = '1px solid ' + (isErr ? '#fecaca' : '#bbf7d0');
+  box.innerHTML = (isErr ? '<i class="fa fa-triangle-exclamation"></i> ' : '<i class="fa fa-circle-check"></i> ') + msg;
+}
+
+function renderCsvPreview(list, newCount, updateCount) {
+  var tbody = document.getElementById('csvPreviewTbody');
+  var statsEl = document.getElementById('csvPreviewStats');
+  var prevSec = document.getElementById('csvPreviewSection');
+  var btnExec = document.getElementById('btnExecuteBulkUpload');
+
+  if (statsEl) statsEl.innerHTML = '<strong>' + list.length + '</strong> rows (' + newCount + ' New, ' + updateCount + ' Updates)';
+
+  if (tbody) {
+    tbody.innerHTML = list.slice(0, 50).map(function (item) {
+      var badge = item.isUpdate
+        ? '<span class="badge bo" style="font-size:10px;">Update</span>'
+        : '<span class="badge bg" style="font-size:10px;">New Item</span>';
+      return '<tr>' +
+        '<td>' + badge + '</td>' +
+        '<td>' + (item.ItemID || '-') + '</td>' +
+        '<td><strong>' + item.ItemName + '</strong></td>' +
+        '<td>' + (item.Category || 'General') + '</td>' +
+        '<td>' + item.Unit + '</td>' +
+        '<td>₹' + fmt(item.DefaultPrice) + '</td>' +
+        '<td>' + item.GSTPercent + '%</td>' +
+        '<td>' + item.Status + '</td>' +
+        '</tr>';
+    }).join('');
+
+    if (list.length > 50) {
+      tbody.innerHTML += '<tr><td colspan="8" style="text-align:center;color:var(--muted);font-size:11px;">… and ' + (list.length - 50) + ' more items</td></tr>';
+    }
+  }
+
+  if (prevSec) prevSec.style.display = 'block';
+  showCsvStatus('CSV parsed successfully. Review items preview below and click "Upload & Apply Bulk Changes".', false);
+  if (btnExec) btnExec.disabled = false;
+}
+
+function executeBulkItemUpload() {
+  if (!APP.parsedCsvItems || !APP.parsedCsvItems.length) {
+    toast('No CSV items ready to upload', true);
+    return;
+  }
+
+  var btnExec = document.getElementById('btnExecuteBulkUpload');
+  if (btnExec) {
+    btnExec.disabled = true;
+    btnExec.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Processing Bulk Changes...';
+  }
+
+  api('bulkSaveItems', { items: APP.parsedCsvItems }, function (r) {
+    if (btnExec) {
+      btnExec.disabled = false;
+      btnExec.innerHTML = '<i class="fa fa-upload"></i> Upload &amp; Apply Bulk Changes';
+    }
+
+    if (r && r.success) {
+      toast(r.message || 'Bulk items updated successfully!');
+      closeModal('bulkItemModal');
+      loadItems();
+    } else {
+      toast(r ? (r.message || 'Failed to bulk upload items') : 'Upload error', true);
+    }
+  });
 }
 
 function loadPricing() {
@@ -2176,7 +2569,11 @@ function renderCItems(items) {
   el.innerHTML = items.map(function (i) {
     var qty = (APP.cart[i.ItemID] ? APP.cart[i.ItemID].qty : 0);
     var inCart = qty > 0 ? ' in-cart' : '';
-    var thumbHtml = i.ImageBase64 ? '<img src="data:image/jpeg;base64,' + i.ImageBase64 + '" alt="' + i.ItemName + '">' : '<div class="ecom-emoji-avatar">' + getEmoji(i.ItemName) + '</div>';
+    var imgSrc = i.ImageBase64 ? String(i.ImageBase64).trim() : '';
+    if (imgSrc && !imgSrc.startsWith('data:') && !imgSrc.startsWith('http://') && !imgSrc.startsWith('https://')) {
+      imgSrc = 'data:image/jpeg;base64,' + imgSrc;
+    }
+    var thumbHtml = imgSrc ? '<img src="' + imgSrc + '" alt="' + i.ItemName + '">' : '<div class="ecom-emoji-avatar">' + getEmoji(i.ItemName) + '</div>';
 
     var ctrlHtml = '';
     if (qty > 0) {
