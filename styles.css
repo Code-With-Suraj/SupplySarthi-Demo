@@ -2735,3 +2735,187 @@ tbody tr:hover td {
   border-bottom: 2px solid #10b981 !important;
 }
 
+/* ===== SKELETON LOADING SYSTEM ===== */
+@keyframes skeletonShimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton-bone {
+  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 40%, #e2e8f0 80%);
+  background-size: 400px 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+/* Table row skeleton */
+.skeleton-table-row td {
+  padding: 12px 10px !important;
+}
+.skeleton-table-row .skeleton-bone {
+  height: 14px;
+  width: 80%;
+  display: block;
+}
+.skeleton-table-row .skeleton-bone.w-short { width: 50px; }
+.skeleton-table-row .skeleton-bone.w-mid { width: 100px; }
+.skeleton-table-row .skeleton-bone.w-long { width: 140px; }
+.skeleton-table-row .skeleton-bone.w-full { width: 100%; }
+
+/* Card / list item skeleton */
+.skeleton-card-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.skeleton-card-item .sk-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skeleton-card-item .sk-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* Stat card skeleton */
+.skeleton-stat-card {
+  background: #ffffff;
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.skeleton-stat-card .sk-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.skeleton-stat-card .sk-val {
+  height: 24px;
+  width: 70px;
+  border-radius: 6px;
+}
+.skeleton-stat-card .sk-lbl {
+  height: 12px;
+  width: 100px;
+  border-radius: 4px;
+}
+
+/* Product grid skeleton */
+.skeleton-product-card {
+  background: #ffffff;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+.skeleton-product-card .sk-thumb {
+  width: 100%;
+  height: 80px;
+  border-radius: 10px;
+}
+.skeleton-product-card .sk-title {
+  height: 14px;
+  width: 75%;
+  border-radius: 4px;
+}
+.skeleton-product-card .sk-price {
+  height: 12px;
+  width: 50%;
+  border-radius: 4px;
+}
+.skeleton-product-card .sk-btn {
+  height: 32px;
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+/* Site card skeleton */
+.skeleton-site-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.skeleton-site-card .sk-site-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex: 0 0 auto;
+}
+.skeleton-site-card .sk-site-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Balance card skeleton */
+.skeleton-balance-card {
+  background: linear-gradient(135deg, #052e16, #14532d);
+  border-radius: var(--radius);
+  padding: 22px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.skeleton-balance-card .skeleton-bone {
+  background: linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.18) 40%, rgba(255,255,255,0.08) 80%);
+  background-size: 400px 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+/* Recent orders skeleton (client) */
+.skeleton-order-row {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Dashboard biz card skeleton */
+.skeleton-biz-card {
+  background: linear-gradient(135deg, rgba(5, 46, 22, 0.95), rgba(15, 76, 43, 0.95));
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.skeleton-biz-card .skeleton-bone {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.16) 40%, rgba(255,255,255,0.06) 80%);
+  background-size: 400px 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+/* Mini card skeleton (client dashboard) */
+.skeleton-mini-card {
+  background: #ffffff;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow);
+}
+

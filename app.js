@@ -6,6 +6,9 @@ var APP = {
   role: null,
   clientId: null,
   clientName: null,
+  userPhone: null,
+  connectedSuppliers: [],
+  activeSupplier: null,
   allClients: [],
   allItems: [],
   cart: {},
@@ -61,6 +64,88 @@ function itemImageHtml_(base64, sizePx) {
   var sz = sizePx || 40;
   if (!base64 || !String(base64).trim()) return '';
   return '<img src="' + base64 + '" style="width:' + sz + 'px;height:' + sz + 'px;object-fit:cover;border-radius:6px;border:1px solid var(--border);">';
+}
+
+// ===== SKELETON LOADING HELPERS =====
+function skeletonTableRows(cols, rows) {
+  var n = rows || 5, html = '';
+  for (var r = 0; r < n; r++) {
+    html += '<tr class="skeleton-table-row">';
+    for (var c = 0; c < cols; c++) {
+      var w = c === 0 ? 'w-short' : (c === cols - 1 ? 'w-mid' : '');
+      html += '<td><div class="skeleton-bone ' + w + '">&nbsp;</div></td>';
+    }
+    html += '</tr>';
+  }
+  return html;
+}
+
+function skeletonCardItems(count) {
+  var n = count || 4, html = '';
+  for (var i = 0; i < n; i++) {
+    html += '<div class="skeleton-card-item">' +
+      '<div class="sk-left">' +
+      '<div class="skeleton-bone" style="height:14px;width:' + (60 + Math.random() * 30) + '%;"></div>' +
+      '<div class="skeleton-bone" style="height:10px;width:' + (40 + Math.random() * 20) + '%;"></div>' +
+      '</div>' +
+      '<div class="sk-right">' +
+      '<div class="skeleton-bone" style="height:14px;width:60px;"></div>' +
+      '<div class="skeleton-bone" style="height:20px;width:50px;border-radius:10px;"></div>' +
+      '</div></div>';
+  }
+  return html;
+}
+
+function skeletonProductGrid(count) {
+  var n = count || 6, html = '';
+  for (var i = 0; i < n; i++) {
+    html += '<div class="skeleton-product-card">' +
+      '<div class="skeleton-bone sk-thumb"></div>' +
+      '<div class="skeleton-bone sk-title"></div>' +
+      '<div class="skeleton-bone sk-price"></div>' +
+      '<div class="skeleton-bone sk-btn"></div></div>';
+  }
+  return html;
+}
+
+function skeletonSiteCards(count) {
+  var n = count || 2, html = '';
+  for (var i = 0; i < n; i++) {
+    html += '<div class="skeleton-site-card">' +
+      '<div class="skeleton-bone sk-site-icon"></div>' +
+      '<div class="sk-site-info">' +
+      '<div class="skeleton-bone" style="height:13px;width:70%;"></div>' +
+      '<div class="skeleton-bone" style="height:10px;width:90%;"></div>' +
+      '</div></div>';
+  }
+  return html;
+}
+
+function skeletonStatCards() {
+  var html = '';
+  for (var i = 0; i < 4; i++) {
+    html += '<div class="skeleton-stat-card">' +
+      '<div class="skeleton-bone sk-icon"></div>' +
+      '<div class="skeleton-bone sk-val"></div>' +
+      '<div class="skeleton-bone sk-lbl"></div></div>';
+  }
+  return html;
+}
+
+function skeletonBalanceCard() {
+  return '<div class="skeleton-balance-card">' +
+    '<div class="skeleton-bone" style="height:12px;width:120px;"></div>' +
+    '<div class="skeleton-bone" style="height:28px;width:160px;"></div>' +
+    '<div class="skeleton-bone" style="height:10px;width:80px;"></div></div>';
+}
+
+function skeletonMiniCards() {
+  return '<div class="skeleton-mini-card"><div class="skeleton-bone" style="width:36px;height:36px;border-radius:10px;"></div>' +
+    '<div class="skeleton-bone" style="height:20px;width:40px;"></div>' +
+    '<div class="skeleton-bone" style="height:10px;width:70px;"></div></div>' +
+    '<div class="skeleton-mini-card"><div class="skeleton-bone" style="width:36px;height:36px;border-radius:10px;"></div>' +
+    '<div class="skeleton-bone" style="height:20px;width:40px;"></div>' +
+    '<div class="skeleton-bone" style="height:10px;width:70px;"></div></div>';
 }
 
 function toast(msg, isErr) {
@@ -567,7 +652,51 @@ function printHTMLAsync(action, payload, cacheKey) {
   });
 }
 
-// ===== LOGIN =====
+// ===== LOGIN & MARKETPLACE REDIRECT =====
+function checkLoginRedirect_() {
+  try {
+    var search = (window.location.search || '').toLowerCase();
+    var hash = (window.location.hash || '').toLowerCase();
+    var referrer = (document.referrer || '').toLowerCase();
+
+    // Bypass parameters to prevent redirect loop when returning from Marketplace or using direct links
+    var hasBypassParam = search.indexOf('direct=') > -1 ||
+                         search.indexOf('noredirect=') > -1 ||
+                         search.indexOf('from_market=') > -1 ||
+                         search.indexOf('from=') > -1 ||
+                         search.indexOf('mode=') > -1 ||
+                         search.indexOf('role=') > -1 ||
+                         search.indexOf('tab=') > -1 ||
+                         search.indexOf('login=') > -1 ||
+                         search.indexOf('page=') > -1 ||
+                         search.indexOf('invite=') > -1 ||
+                         search.indexOf('supplier_id=') > -1 ||
+                         hash.indexOf('admin') > -1 ||
+                         hash.indexOf('client') > -1 ||
+                         hash.indexOf('supplier') > -1 ||
+                         hash.indexOf('customer') > -1;
+
+    var isFromMarket = referrer.indexOf('supply-sarthi-market') > -1 || referrer.indexOf('vercel.app') > -1;
+    var sessionSkipped = sessionStorage.getItem('skip_market_redirect') === '1';
+
+    if (hasBypassParam || isFromMarket || sessionSkipped) {
+      return false;
+    }
+
+    sessionStorage.setItem('skip_market_redirect', '1');
+
+    var marketUrl = (typeof CONFIG !== 'undefined' && CONFIG.MARKETPLACE_URL) 
+      ? CONFIG.MARKETPLACE_URL 
+      : 'https://supply-sarthi-market.vercel.app';
+
+    window.location.href = marketUrl;
+    return true;
+  } catch (e) {
+    console.error('Error in login redirect:', e);
+    return false;
+  }
+}
+
 function getLoginPageParam() {
   try {
     var search = window.location.search || '';
@@ -687,12 +816,15 @@ function doClientLogin() {
       APP.role = 'client';
       APP.clientId = r.clientId;
       APP.clientName = r.clientName;
+      APP.userPhone = phone;
       document.getElementById('cNavUser').textContent = r.clientName || '';
       var cDeskUser = document.getElementById('cNavUserDesk');
       if (cDeskUser) cDeskUser.textContent = r.clientName || '';
-      startSession({ role: 'client', clientId: r.clientId, clientName: r.clientName });
+      startSession({ role: 'client', clientId: r.clientId, clientName: r.clientName, phone: phone });
       showScreen('clientScreen');
-      bootstrapClientData();
+      loadConnectedSuppliers(phone, function () {
+        bootstrapClientData();
+      });
     } else if (r && (r.subscriptionExpired || r.isMaintenance)) {
       showClientMaintenanceScreen(r.settings);
     } else {
@@ -701,6 +833,88 @@ function doClientLogin() {
   }, function () {
     btn.disabled = false; btn.innerHTML = '<i class="fa fa-arrow-right-to-bracket"></i> Login to Portal';
   });
+}
+
+// ===== MULTI-SUPPLIER ROUTING & REGISTRY =====
+function loadConnectedSuppliers(phone, cb) {
+  if (!phone) {
+    if (cb) cb();
+    return;
+  }
+  APP.userPhone = phone;
+
+  var pendingInvite = getUrlParameter_('invite') || getUrlParameter_('supplier_id') || sessionStorage.getItem('pending_invite_supplier');
+  if (pendingInvite) {
+    sessionStorage.removeItem('pending_invite_supplier');
+    apiBg('LINK_CUSTOMER_TO_SUPPLIER', { phone: phone, supplierId: pendingInvite }, function () {
+      fetchSuppliersFromCentral_(phone, cb);
+    });
+  } else {
+    fetchSuppliersFromCentral_(phone, cb);
+  }
+}
+
+function fetchSuppliersFromCentral_(phone, cb) {
+  apiBg('GET_CUSTOMER_SUPPLIERS', { phone: phone }, function (r) {
+    if (r && r.success && Array.isArray(r.suppliers) && r.suppliers.length > 0) {
+      APP.connectedSuppliers = r.suppliers;
+      var savedSuppId = localStorage.getItem('SupplySarthi_ActiveSupplier_' + phone);
+      var match = APP.connectedSuppliers.find(function (s) { return s.id === savedSuppId; });
+      APP.activeSupplier = match || APP.connectedSuppliers[0];
+      window.CURRENT_SUPPLIER_API_URL = APP.activeSupplier.apiUrl;
+      renderSupplierSelector_();
+    } else {
+      APP.connectedSuppliers = [];
+      APP.activeSupplier = null;
+      window.CURRENT_SUPPLIER_API_URL = null;
+      var wrap = document.getElementById('cSupplierSelectorWrap');
+      if (wrap) wrap.style.display = 'none';
+    }
+    if (cb) cb();
+  });
+}
+
+function renderSupplierSelector_() {
+  var wrap = document.getElementById('cSupplierSelectorWrap');
+  var sel = document.getElementById('cSupplierSelect');
+  if (!wrap || !sel) return;
+
+  if (APP.connectedSuppliers.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = 'block';
+  sel.innerHTML = APP.connectedSuppliers.map(function (s) {
+    var isSel = APP.activeSupplier && APP.activeSupplier.id === s.id;
+    return '<option value="' + s.id + '"' + (isSel ? ' selected' : '') + '>🏬 ' + (s.name || s.id) + '</option>';
+  }).join('');
+}
+
+function onSupplierChange(selectedSupplierId) {
+  var selected = APP.connectedSuppliers.find(function (s) { return s.id === selectedSupplierId; });
+  if (!selected) return;
+
+  APP.activeSupplier = selected;
+  window.CURRENT_SUPPLIER_API_URL = selected.apiUrl;
+  if (APP.userPhone || APP.clientId) {
+    localStorage.setItem('SupplySarthi_ActiveSupplier_' + (APP.userPhone || APP.clientId), selectedSupplierId);
+  }
+
+  APP.cart = {};
+  if (typeof updateCartBar === 'function') updateCartBar();
+
+  toast('Switched to supplier: ' + selected.name);
+  bootstrapClientData();
+}
+
+function getUrlParameter_(name) {
+  try {
+    var searchParams = new URLSearchParams(window.location.search);
+    return searchParams.get(name);
+  } catch (e) {
+    return null;
+  }
 }
 
 // ===== SESSION MANAGEMENT =====
@@ -748,6 +962,7 @@ function startSession(data) {
     role: data.role,
     clientId: data.clientId || null,
     clientName: data.clientName || null,
+    phone: data.phone || null,
     loginAt: now,
     lastActivityAt: now
   };
@@ -799,11 +1014,14 @@ function restoreSession() {
   } else if (s.role === 'client' && s.clientId) {
     APP.clientId = s.clientId;
     APP.clientName = s.clientName;
+    APP.userPhone = s.phone || s.clientId;
     document.getElementById('cNavUser').textContent = s.clientName || '';
     var cDeskUser = document.getElementById('cNavUserDesk');
     if (cDeskUser) cDeskUser.textContent = s.clientName || '';
     showScreen('clientScreen');
-    bootstrapClientData();
+    loadConnectedSuppliers(APP.userPhone, function () {
+      bootstrapClientData();
+    });
   } else {
     clearSession(s.role);
     return false;
@@ -815,6 +1033,9 @@ function restoreSession() {
 function doLogout(silent) {
   stopSessionMonitor();
   clearSession();
+  try {
+    sessionStorage.setItem('skip_market_redirect', '1');
+  } catch (e) {}
   APP = { role: null, clientId: null, clientName: null, allClients: [], allItems: [], cart: {}, deliveryOrderId: null, subscriptionInfo: null };
   showScreen('loginScreen');
   document.getElementById('adminPass').value = '';
@@ -1096,6 +1317,9 @@ function applyBusinessSettings_(settings) {
 }
 
 function bootstrapAdminData(cb) {
+  // Show skeleton loading on dashboard
+  var dashTb = document.getElementById('dashTbody');
+  if (dashTb) dashTb.innerHTML = skeletonTableRows(5, 3);
   api('getInitialAdminData', {}, function (r) {
     if (r) {
       if (r.clients) {
@@ -1126,6 +1350,13 @@ function bootstrapAdminData(cb) {
 
 function bootstrapClientData(cb) {
   if (!APP.clientId) { if (cb) cb(); return; }
+  // Show skeleton loading on client portal
+  var cRecentEl = document.getElementById('cRecentOrders');
+  if (cRecentEl) cRecentEl.innerHTML = skeletonCardItems(3);
+  var cItemsEl = document.getElementById('cItemsList');
+  if (cItemsEl) cItemsEl.innerHTML = skeletonProductGrid(6);
+  var cSiteListEl = document.getElementById('cSiteList');
+  if (cSiteListEl) cSiteListEl.innerHTML = skeletonSiteCards(2);
   api('getInitialClientData', { clientId: APP.clientId }, function (r) {
     if (r) {
       if (r.subscriptionBlocked || r.subscriptionExpired || r.isMaintenance) {
@@ -1230,6 +1461,8 @@ function renderAdminDashboard_(r) {
 }
 
 function loadAdminDashboard(cb) {
+  var dashTb = document.getElementById('dashTbody');
+  if (dashTb) dashTb.innerHTML = skeletonTableRows(5, 3);
   api('getAdminDashboard', {}, function (r) {
     renderAdminDashboard_(r);
     if (cb) cb();
@@ -1238,8 +1471,9 @@ function loadAdminDashboard(cb) {
 
 function loadOrders() {
   var status = document.getElementById('orderStatusFilter').value;
+  var tbody = document.getElementById('ordersTbody');
+  if (tbody) tbody.innerHTML = skeletonTableRows(6, 5);
   api('getOrders', { status: status }, function (r) {
-    var tbody = document.getElementById('ordersTbody');
     if (!tbody) return;
     if (!r || !r.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No orders found</td></tr>'; return; }
     tbody.innerHTML = r.map(function (o) {
@@ -1276,8 +1510,9 @@ function updateOrderStatus(orderId, status) {
 
 function loadDemand() {
   var dt = document.getElementById('demandDate').value || new Date().toISOString().split('T')[0];
+  var el = document.getElementById('demandList');
+  if (el) el.innerHTML = skeletonCardItems(3);
   api('getDemandPlanning', { deliveryDate: dt }, function (r) {
-    var el = document.getElementById('demandList');
     if (!el) return;
     if (!r || !r.length) { el.innerHTML = '<div class="empty"><i class="fa fa-check-circle"></i>No deliveries scheduled for this date</div>'; return; }
     el.innerHTML = r.map(function (i) {
@@ -1287,8 +1522,9 @@ function loadDemand() {
 }
 
 function loadDelivery() {
+  var tbody = document.getElementById('deliveryTbody');
+  if (tbody) tbody.innerHTML = skeletonTableRows(4, 4);
   api('getPendingDeliveries', {}, function (r) {
-    var tbody = document.getElementById('deliveryTbody');
     if (!tbody) return;
     if (!r || !r.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No pending deliveries</td></tr>'; return; }
     tbody.innerHTML = r.map(function (o) {
@@ -1326,6 +1562,8 @@ function submitDelivery() {
 }
 
 function loadClients() {
+  var tb = document.getElementById('clientsTbody');
+  if (tb) tb.innerHTML = skeletonTableRows(7, 5);
   loadAllClients(function () { setPagerData_('clientsTbody', APP.allClients); });
 }
 
@@ -1402,7 +1640,7 @@ function resetSiteForm_() {
 
 function loadClientSitesModal_(clientId) {
   var listEl = document.getElementById('sitesListEl');
-  if (listEl) listEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);"><i class="fa fa-spinner fa-spin"></i> Loading sites...</div>';
+  if (listEl) listEl.innerHTML = skeletonSiteCards(3);
   api('getClientSites', { clientId: clientId }, function (r) {
     var sites = Array.isArray(r) ? r : (r && r.sites ? r.sites : []);
     APP.currentModalSites = sites;
@@ -1480,14 +1718,16 @@ function saveSite() {
 }
 
 function openAddSiteFromOrder() {
-  if (APP.role === 'client' && APP.clientId) {
-    openSitesModal(APP.clientId, APP.clientName || 'My Business');
-  } else {
-    toast('Please login to manage sites', true);
+  if (APP.role === 'admin') {
+    toast('Use Clients page to manage sites', true);
+    return;
   }
+  toast('Please contact your supplier to add delivery sites', true);
 }
 
 function loadItems() {
+  var tb = document.getElementById('itemsTbody');
+  if (tb) tb.innerHTML = skeletonTableRows(8, 5);
   loadAllItems(function () { setPagerData_('itemsTbody', APP.allItems); });
 }
 
@@ -1586,6 +1826,8 @@ function savePricing(cid) {
 
 function loadInvoices() {
   var cid = document.getElementById('invClient').value;
+  var tb = document.getElementById('invoicesTbody');
+  if (tb) tb.innerHTML = skeletonTableRows(6, 4);
   api('getInvoices', { clientId: cid }, function (r) {
     setPagerData_('invoicesTbody', r || []);
   });
@@ -1637,6 +1879,8 @@ function printInvoice(invId) {
 }
 
 function loadPayments() {
+  var tb = document.getElementById('paymentsTbody');
+  if (tb) tb.innerHTML = skeletonTableRows(6, 4);
   api('getPayments', {}, function (r) {
     setPagerData_('paymentsTbody', r || []);
   });
@@ -1701,8 +1945,9 @@ function loadLedger() {
   if (!cid) return;
   var from = document.getElementById('ledgerFrom').value;
   var to = document.getElementById('ledgerTo').value;
+  var tbody = document.getElementById('ledgerTbody');
+  if (tbody) tbody.innerHTML = skeletonTableRows(8, 5);
   api('getLedger', { clientId: cid, startDate: from, endDate: to }, function (r) {
-    var tbody = document.getElementById('ledgerTbody');
     if (!tbody) return;
     if (!r || !r.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">No ledger entries</td></tr>'; return; }
     tbody.innerHTML = r.map(function (l) {
@@ -1720,8 +1965,9 @@ function downloadLedger() {
 }
 
 function loadOutstanding() {
+  var tbody = document.getElementById('outstandingTbody');
+  if (tbody) tbody.innerHTML = skeletonTableRows(4, 5);
   api('getOutstandingBalances', {}, function (r) {
-    var tbody = document.getElementById('outstandingTbody');
     if (!tbody) return;
     if (!r || !r.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No outstanding balances</td></tr>'; return; }
     tbody.innerHTML = r.map(function (c) {
@@ -1822,21 +2068,22 @@ function cPage(p) {
 }
 
 function loadCDashboard() {
+  var balEl = document.getElementById('cBal');
+  var totOrd = document.getElementById('cTotalOrders');
+  var lastInv = document.getElementById('cLastInv');
+  var el = document.getElementById('cRecentOrders');
+  if (el) el.innerHTML = skeletonCardItems(3);
   api('getClientDashboard', { clientId: APP.clientId }, function (r) {
     if (!r) return;
     APP.clientBalance = r.balance || 0;
-    var balEl = document.getElementById('cBal');
     if (balEl) balEl.textContent = '₹' + fmt(r.balance || 0);
-    var totOrd = document.getElementById('cTotalOrders');
     if (totOrd) totOrd.textContent = r.totalOrders || 0;
-    var lastInv = document.getElementById('cLastInv');
     if (lastInv) lastInv.textContent = '₹' + fmt(r.lastInvoice || 0);
 
     if (APP.clientCreditLimit !== undefined) {
       updateCreditDashboardCard_(APP.clientCreditLimit, APP.clientBalance);
     }
 
-    var el = document.getElementById('cRecentOrders');
     if (el && r.recentOrders) {
       if (!r.recentOrders.length) el.innerHTML = '<div class="empty">No recent orders</div>';
       else el.innerHTML = r.recentOrders.map(renderClientOrderHistoryItem_).join('');
@@ -1909,6 +2156,8 @@ function onCustomDateChange() {
 }
 
 function loadCItems() {
+  var el = document.getElementById('cItemsList');
+  if (el) el.innerHTML = skeletonProductGrid(6);
   api('getItems', { clientId: APP.clientId }, function (r) {
     var items = (r && r.items) || (Array.isArray(r) ? r : []);
     APP.clientItems = items;
@@ -2009,11 +2258,14 @@ function renderCSitesDropdownAndList_(sites) {
   }
   if (!list) return;
   if (!sites || !sites.length) {
-    list.innerHTML = '<div class="empty" style="grid-column:1/-1;">No delivery sites configured</div>';
+    list.innerHTML = '<div class="empty" style="grid-column:1/-1;"><i class="fa fa-triangle-exclamation" style="color:var(--accent2);margin-right:6px;"></i>No delivery site assigned. Please contact your supplier to add a delivery site.</div>';
+    APP.selectedSiteId = '';
     return;
   }
 
-  if (!APP.selectedSiteId && sites.length > 0) {
+  // Auto-select first site if none selected or selected site is invalid
+  var validSite = sites.some(function(s) { return s.SiteID === APP.selectedSiteId; });
+  if (!validSite && sites.length > 0) {
     APP.selectedSiteId = sites[0].SiteID;
   }
 
@@ -2032,6 +2284,8 @@ function renderCSitesDropdownAndList_(sites) {
 }
 
 function loadCSites() {
+  var siteList = document.getElementById('cSiteList');
+  if (siteList) siteList.innerHTML = skeletonSiteCards(2);
   api('getClientSites', { clientId: APP.clientId }, function (r) {
     APP.clientSites = r || [];
     renderCSitesDropdownAndList_(APP.clientSites);
@@ -2104,6 +2358,10 @@ function loadClientCreditInfo() {
 }
 
 function placeOrder() {
+  if (!APP.selectedSiteId) {
+    toast('⚠️ Please select a delivery site before placing an order', true);
+    return;
+  }
   var items = [];
   Object.keys(APP.cart).forEach(function (k) {
     items.push({ itemID: k, orderedQty: APP.cart[k].qty, price: APP.cart[k].price });
@@ -2126,6 +2384,8 @@ function placeOrder() {
 
 function loadCOrders() {
   var siteFilter = (document.getElementById('cHistorySiteFilter') && document.getElementById('cHistorySiteFilter').value) || '';
+  var el = document.getElementById('cOrderHistory');
+  if (el) el.innerHTML = skeletonCardItems(4);
   api('getOrders', { clientId: APP.clientId }, function (r) {
     var orders = Array.isArray(r) ? r : [];
     if (siteFilter) orders = orders.filter(function (o) { return String(o.SiteID || '') === siteFilter; });
@@ -2173,6 +2433,8 @@ function reorder(orderId) {
 }
 
 function loadCInvoices() {
+  var cInvEl = document.getElementById('cInvoices');
+  if (cInvEl) cInvEl.innerHTML = skeletonCardItems(3);
   api('getInvoices', { clientId: APP.clientId }, function (r) {
     setListPagerEmptyHtml_('cInvoices', '<div class="empty"><i class="fa fa-file-invoice"></i>No invoices</div>');
     if (!r || !r.length) { APP.cInvoicesLedger = []; setListPagerData_('cInvoices', []); return; }
@@ -2189,6 +2451,8 @@ function loadCLedger() {
   var payload = { clientId: APP.clientId };
   if (from) payload.startDate = from;
   if (to) payload.endDate = to;
+  var cLedEl = document.getElementById('cLedger');
+  if (cLedEl) cLedEl.innerHTML = skeletonCardItems(5);
   api('getLedger', payload, function (r) {
     setListPagerData_('cLedger', r || []);
   });
@@ -2203,8 +2467,9 @@ function cDownloadLedger() {
 
 // ===== ISSUES TICKET SYSTEM =====
 function loadAdminIssues() {
+  var tbody = document.getElementById('issuesTbody');
+  if (tbody) tbody.innerHTML = skeletonTableRows(9, 4);
   api('getIssues', {}, function (r) {
-    var tbody = document.getElementById('issuesTbody');
     if (!tbody) return;
     var issues = Array.isArray(r) ? r : (r && r.issues) || [];
     if (!issues.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty">No issues reported</td></tr>'; return; }
@@ -2249,8 +2514,9 @@ function confirmRejectIssue() {
 }
 
 function loadClientIssues() {
+  var el = document.getElementById('clientIssuesList');
+  if (el) el.innerHTML = skeletonCardItems(3);
   api('getIssues', { clientId: APP.clientId }, function (r) {
-    var el = document.getElementById('clientIssuesList');
     if (!el) return;
     var issues = Array.isArray(r) ? r : (r && r.issues) || [];
     if (!issues.length) { el.innerHTML = '<div class="empty">No issues reported yet</div>'; return; }
@@ -2412,6 +2678,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Restore active session if valid
   if (!restoreSession()) {
+    if (checkLoginRedirect_()) {
+      return;
+    }
     showScreen('loginScreen');
     applyLoginPageParam();
   }

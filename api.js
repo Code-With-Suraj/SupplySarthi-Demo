@@ -1,19 +1,44 @@
 // ============================================================
 // SupplySarthi — Decoupled REST API Client
+// Supporting Multi-Supplier Central Registry & Dynamic Routing
 // ============================================================
+
+/**
+ * Global active supplier API target URL for buyer requests
+ */
+window.CURRENT_SUPPLIER_API_URL = null;
+
+/**
+ * Resolves the appropriate target Google Apps Script URL for a given API action
+ */
+function getGasUrl(action) {
+  // Actions that MUST go to the Master Central Registry
+  const centralActions = ['GET_CUSTOMER_SUPPLIERS', 'LINK_CUSTOMER_TO_SUPPLIER', 'REGISTER_SUPPLIER'];
+  if (centralActions.indexOf(action) > -1) {
+    return (CONFIG && CONFIG.CENTRAL_REGISTRY_URL) ? CONFIG.CENTRAL_REGISTRY_URL : CONFIG.GAS_URL;
+  }
+
+  // If active supplier is set (e.g. buyer selected a supplier), route to that supplier's endpoint
+  if (window.CURRENT_SUPPLIER_API_URL) {
+    return window.CURRENT_SUPPLIER_API_URL;
+  }
+
+  // Default fallback URL
+  return (CONFIG && CONFIG.GAS_URL) ? CONFIG.GAS_URL : '';
+}
 
 /**
  * Modern REST API client replacing google.script.run for Vercel SPA architecture.
  */
-
 function api(action, payload, cb, errCb) {
   if (typeof markActivity === 'function') markActivity();
   if (typeof beginBusy === 'function') beginBusy('Please wait', 'Processing...');
 
   const p = payload || {};
   const requestBody = Object.assign({ action: action, payload: p }, p);
+  const targetUrl = getGasUrl(action);
 
-  fetch(CONFIG.GAS_URL, {
+  fetch(targetUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain;charset=utf-8' // GAS doPost requires text/plain or no preflight CORS issues
@@ -52,8 +77,9 @@ function apiBg(action, payload, cb, errCb) {
 
   const p = payload || {};
   const requestBody = Object.assign({ action: action, payload: p }, p);
+  const targetUrl = getGasUrl(action);
 
-  fetch(CONFIG.GAS_URL, {
+  fetch(targetUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'text/plain;charset=utf-8'
