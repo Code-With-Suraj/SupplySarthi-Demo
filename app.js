@@ -476,12 +476,17 @@ function renderListPager_(key) {
 
 function renderAdminClientRow_(c) {
   var bal = parseFloat(c.Balance) || 0;
-  return '<tr><td>' + c.ClientID + '</td><td><strong>' + c.ClientName + '</strong><br><small style="color:var(--muted);">' + (c.Email || '') + '</small></td><td>' + c.Phone + '</td>' +
+  var disc = parseFloat(c.DiscountPercent) || 0;
+  var discBadge = disc > 0
+    ? '<br><span class="badge bg" style="font-size:10px;margin-top:3px;display:inline-flex;align-items:center;gap:3px;" title="' + (c.DiscountReason || 'Special Discount') + '"><i class="fa fa-percent"></i> ' + disc + '% OFF</span>'
+    : '';
+  return '<tr><td>' + c.ClientID + '</td><td><strong>' + c.ClientName + '</strong>' + discBadge + '<br><small style="color:var(--muted);">' + (c.Email || '') + '</small></td><td>' + c.Phone + '</td>' +
     '<td><span class="badge bb">' + c.BillingType + '</span></td>' +
     '<td><span class="badge ' + (c.Status === 'Active' ? 'bg' : 'bgr') + '">' + c.Status + '</span></td>' +
     '<td><strong style="color:' + (bal > 0 ? 'var(--accent2)' : 'var(--green-mid)') + '">\u20b9' + fmt(bal) + '</strong></td>' +
     '<td style="white-space:nowrap;">' +
     '<button class="btn btn-s btn-sm btn-ico" title="Manage Sites" onclick="openSitesModal(\'' + c.ClientID + '\',\'' + (c.ClientName || '').replace(/'/g, '\\x27') + '\')"><i class="fa fa-building"></i></button> ' +
+    '<button class="btn btn-s btn-sm btn-ico" title="Special / Occasional Discount" style="color:var(--green-mid);" onclick="openClientDiscountModal(\'' + c.ClientID + '\')"><i class="fa fa-percent"></i></button> ' +
     '<button class="btn btn-s btn-sm btn-ico" onclick="editClient(this)" data-c=\'' + JSON.stringify(c).replace(/'/g, '&#39;') + '\' ><i class="fa fa-edit"></i></button>' +
     '</td></tr>';
 }
@@ -1392,6 +1397,8 @@ function bootstrapClientData(cb) {
       if (r.items) {
         var items = (r.items && r.items.items) || (Array.isArray(r.items) ? r.items : []);
         APP.clientItems = items;
+        APP.activeCategoryFilter = 'all';
+        buildCategoryChips_(items);
         renderCItems(items);
         initQuickDelDates_();
       }
@@ -1399,6 +1406,12 @@ function bootstrapClientData(cb) {
         APP.clientSites = Array.isArray(r.sites) ? r.sites : (r.sites.sites || []);
         renderCSitesDropdownAndList_(APP.clientSites);
       }
+      if (r.discount) {
+        APP.clientDiscount = r.discount;
+      } else {
+        APP.clientDiscount = { discountPercent: 0, discountReason: '', source: 'none' };
+      }
+      updateCartBar();
       if (r.creditInfo) {
         var limit = parseFloat(r.creditInfo.creditLimit) || 0;
         var balance = parseFloat(r.creditInfo.balance || APP.clientBalance || 0);
@@ -1496,8 +1509,32 @@ function viewOrderDetail(orderId) {
       return '<tr><td>' + i.ItemName + '</td><td>' + i.OrderedQty + ' ' + i.Unit + '</td><td>₹' + fmt(i.Price) + '</td><td>₹' + fmt(i.Total) + '</td></tr>';
     }).join('');
 
+    var subtotal = (r.items || []).reduce(function (s, i) { return s + (parseFloat(i.Total) || 0); }, 0);
+    var discPct = parseFloat(r.DiscountPercent) || 0;
+    var discAmt = parseFloat(r.DiscountAmount) || 0;
+    if (discPct > 0 && discAmt === 0 && subtotal > 0) {
+      discAmt = Math.round(subtotal * (discPct / 100) * 100) / 100;
+    }
+    var netTotal = parseFloat(r.TotalAmount) || (subtotal - discAmt);
+
+    var discRow = '';
+    if (discPct > 0 || discAmt > 0) {
+      discRow =
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:var(--muted);">' +
+        '<span>Gross Subtotal:</span><span>₹' + fmt(subtotal) + '</span>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:#16a34a;font-weight:700;">' +
+        '<span>Special Discount (' + discPct + '%):</span><span>- ₹' + fmt(discAmt) + '</span>' +
+        '</div>';
+    }
+
     var html = '<div style="margin-bottom:12px;"><strong>Order ID:</strong> ' + r.OrderID + ' | <strong>Client:</strong> ' + clientName(r.ClientID) + ' | <strong>Status:</strong> ' + sBadge(r.Status) + '</div>' +
       '<div class="tbl-wrap"><table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>' + itemsHtml + '</tbody></table></div>' +
+      '<div style="margin-top:12px;padding:12px 14px;background:var(--card-bg,#f8fafc);border:1px solid var(--border);border-radius:8px;">' +
+      discRow +
+      '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:800;color:var(--text);' + (discRow ? 'border-top:1px dashed var(--border);padding-top:8px;' : '') + '">' +
+      '<span>Total Order Value:</span><span style="color:var(--green-mid);">₹' + fmt(netTotal) + '</span>' +
+      '</div></div>' +
       '<div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">' +
       (r.Status === 'Pending' ? '<button class="btn btn-p" onclick="updateOrderStatus(\'' + r.OrderID + '\',\'Accepted\')">Accept</button><button class="btn btn-s" style="background:#fee2e2;color:#991b1b;" onclick="updateOrderStatus(\'' + r.OrderID + '\',\'Denied\')">Deny</button>' : '') +
       '</div>';
@@ -1587,6 +1624,10 @@ function openClientModal(c) {
   document.getElementById('cBill').value = c ? c.BillingType : 'Monthly';
   document.getElementById('cLimit').value = c ? c.CreditLimit : '0';
   document.getElementById('cStat').value = c ? c.Status : 'Active';
+  var cDiscInp = document.getElementById('cDiscount');
+  if (cDiscInp) cDiscInp.value = (c && c.DiscountPercent !== undefined && c.DiscountPercent !== '') ? c.DiscountPercent : '';
+  var cDiscReasonInp = document.getElementById('cDiscountReason');
+  if (cDiscReasonInp) cDiscReasonInp.value = (c && c.DiscountReason) ? c.DiscountReason : '';
   document.getElementById('clientModalTtl').textContent = c ? 'Edit Client' : 'Add Client';
   openModal('clientModal');
 }
@@ -1609,7 +1650,9 @@ function saveClient() {
     gstin: document.getElementById('cGSTIN').value.trim(),
     billingType: document.getElementById('cBill').value,
     creditLimit: parseFloat(document.getElementById('cLimit').value) || 0,
-    status: document.getElementById('cStat').value
+    status: document.getElementById('cStat').value,
+    discountPercent: (document.getElementById('cDiscount') && document.getElementById('cDiscount').value !== '') ? (parseFloat(document.getElementById('cDiscount').value) || 0) : 0,
+    discountReason: document.getElementById('cDiscountReason') ? document.getElementById('cDiscountReason').value.trim() : ''
   };
   if (!data.clientName || !data.phone) { toast('Name & Phone are required', true); return; }
   api('saveClient', data, function (r) {
@@ -1644,6 +1687,8 @@ function resetSiteForm_() {
   if (stSel) stSel.value = '';
   var stCode = document.getElementById('sStateCode');
   if (stCode) stCode.value = '';
+  var discEl = document.getElementById('sDiscount');
+  if (discEl) discEl.value = '';
   document.getElementById('siteFormTitle').textContent = 'Add New Site';
   document.getElementById('saveSiteBtnText').textContent = 'Save Site';
 }
@@ -1667,9 +1712,12 @@ function renderSitesList_(sites) {
   }
   var html = sites.map(function (s) {
     var safeData = JSON.stringify(s).replace(/'/g, '&#39;');
+    var discBadge = (s.DiscountPercent !== undefined && s.DiscountPercent !== '' && parseFloat(s.DiscountPercent) > 0)
+      ? '<span class="badge bg" style="font-size:10px;margin-left:4px;"><i class="fa fa-percent"></i> ' + s.DiscountPercent + '% OFF</span>'
+      : '';
     return '<div class="card" style="padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:10px;">' +
       '<div>' +
-      '<div style="font-weight:700;font-size:14px;color:var(--text);">' + (s.CompanyName || 'Unnamed Site') + ' <span class="badge ' + (s.Status === 'Active' ? 'bg' : 'bgr') + '" style="font-size:10px;margin-left:6px;">' + (s.Status || 'Active') + '</span></div>' +
+      '<div style="font-weight:700;font-size:14px;color:var(--text);">' + (s.CompanyName || 'Unnamed Site') + ' <span class="badge ' + (s.Status === 'Active' ? 'bg' : 'bgr') + '" style="font-size:10px;margin-left:6px;">' + (s.Status || 'Active') + '</span>' + discBadge + '</div>' +
       '<div style="font-size:12px;color:var(--muted);margin-top:2px;"><i class="fa fa-location-dot"></i> ' + (s.Address || '-') + '</div>' +
       (s.ResponsiblePerson ? '<div style="font-size:11px;color:var(--green-mid);margin-top:2px;"><i class="fa fa-user"></i> ' + s.ResponsiblePerson + (s.ResponsiblePhone ? ' (' + s.ResponsiblePhone + ')' : '') + '</div>' : '') +
       '</div>' +
@@ -1691,6 +1739,8 @@ function editSite(btn) {
   document.getElementById('sRespPhone').value = s.ResponsiblePhone || '';
   if (s.State) setStateSelectValue_('sState', s.State);
   document.getElementById('sStateCode').value = s.StateCode || '';
+  var discEl = document.getElementById('sDiscount');
+  if (discEl) discEl.value = (s.DiscountPercent !== undefined && s.DiscountPercent !== '') ? s.DiscountPercent : '';
   document.getElementById('siteFormTitle').textContent = 'Edit Site (' + s.SiteID + ')';
   document.getElementById('saveSiteBtnText').textContent = 'Update Site';
 }
@@ -1705,6 +1755,8 @@ function saveSite() {
 
   var stateEl = document.getElementById('sState');
   var stateCodeEl = document.getElementById('sStateCode');
+  var discVal = document.getElementById('sDiscount') ? document.getElementById('sDiscount').value.trim() : '';
+  var discNum = discVal !== '' ? (parseFloat(discVal) || 0) : '';
 
   var payload = {
     siteId: siteId,
@@ -1724,7 +1776,9 @@ function saveSite() {
     responsiblePhone: document.getElementById('sRespPhone').value.trim(),
     ResponsiblePhone: document.getElementById('sRespPhone').value.trim(),
     status: document.getElementById('sStat').value,
-    Status: document.getElementById('sStat').value
+    Status: document.getElementById('sStat').value,
+    DiscountPercent: discNum,
+    discountPercent: discNum
   };
 
   var action = siteId ? 'updateClientSite' : 'addClientSite';
@@ -1736,6 +1790,55 @@ function saveSite() {
       if (typeof loadClients === 'function') loadClients();
     } else {
       toast(r ? (r.message || 'Failed to save site') : 'Error saving site', true);
+    }
+  });
+}
+
+// ===== CLIENT QUICK DISCOUNT MODAL & MANAGEMENT =====
+function openClientDiscountModal(clientId) {
+  var client = (APP.allClients || []).find(function (c) { return String(c.ClientID) === String(clientId); });
+  if (!client) { toast('Client not found', true); return; }
+  document.getElementById('cdClientId').value = client.ClientID;
+  document.getElementById('cdClientName').textContent = client.ClientName + ' (ID: ' + client.ClientID + ')';
+  document.getElementById('cdClientPhone').textContent = 'Phone: ' + (client.Phone || '-') + ' • Billing: ' + (client.BillingType || 'Monthly');
+  document.getElementById('cdDiscountRate').value = (client.DiscountPercent !== undefined && client.DiscountPercent !== '') ? client.DiscountPercent : '';
+  document.getElementById('cdReason').value = client.DiscountReason || '';
+  document.getElementById('cdScope').value = 'all';
+  openModal('clientDiscountModal');
+}
+
+function applyDiscountPreset(val) {
+  var inp = document.getElementById('cdDiscountRate');
+  if (inp) inp.value = val;
+}
+
+function saveClientDiscount() {
+  var clientId = document.getElementById('cdClientId').value;
+  var rateVal = document.getElementById('cdDiscountRate').value.trim();
+  var rate = rateVal !== '' ? (parseFloat(rateVal) || 0) : 0;
+  if (rate < 0 || rate > 100) { toast('Discount % must be between 0 and 100', true); return; }
+  var reason = document.getElementById('cdReason').value.trim();
+  var scope = document.getElementById('cdScope').value;
+  var applyToAll = (scope === 'all');
+
+  api('setClientDiscount', {
+    clientId: clientId,
+    discountPercent: rate,
+    discountReason: reason,
+    applyToAllSites: applyToAll
+  }, function (r) {
+    if (r && r.success) {
+      toast('🎉 Discount updated: ' + rate + '% (' + (applyToAll ? 'All Sites' : 'Client Only') + ')');
+      closeModal('clientDiscountModal');
+      // Update local client object in APP.allClients
+      var client = (APP.allClients || []).find(function (c) { return String(c.ClientID) === String(clientId); });
+      if (client) {
+        client.DiscountPercent = rate;
+        client.DiscountReason = reason;
+      }
+      setPagerData_('clientsTbody', APP.allClients || []);
+    } else {
+      toast('❌ ' + ((r && r.message) || 'Failed to save discount'), true);
     }
   });
 }
@@ -2551,9 +2654,11 @@ function onCustomDateChange() {
 function loadCItems() {
   var el = document.getElementById('cItemsList');
   if (el) el.innerHTML = skeletonProductGrid(6);
+  APP.activeCategoryFilter = 'all';
   api('getItems', { clientId: APP.clientId }, function (r) {
     var items = (r && r.items) || (Array.isArray(r) ? r : []);
     APP.clientItems = items;
+    buildCategoryChips_(items);
     renderCItems(items);
   });
 }
@@ -2561,10 +2666,24 @@ function loadCItems() {
 function renderCItems(items) {
   var el = document.getElementById('cItemsList');
   var countEl = document.getElementById('ecomTotalItemsCount');
+  var searchCountEl = document.getElementById('ecomSearchCount');
   if (countEl) countEl.innerHTML = '<i class="fa fa-boxes-stacked"></i> ' + (items ? items.length : 0) + ' Products Available';
 
+  // Update search count
+  if (searchCountEl) {
+    var searchInp = document.getElementById('cItemSearch');
+    var q = searchInp ? searchInp.value.trim() : '';
+    var activeCat = APP.activeCategoryFilter || 'all';
+    if (q || activeCat !== 'all') {
+      searchCountEl.textContent = (items ? items.length : 0) + ' found';
+      searchCountEl.classList.add('visible');
+    } else {
+      searchCountEl.classList.remove('visible');
+    }
+  }
+
   if (!el) return;
-  if (!items || !items.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1;">No products found</div>'; return; }
+  if (!items || !items.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:40px 20px;text-align:center;"><i class="fa fa-search" style="font-size:24px;color:var(--muted);margin-bottom:8px;display:block;"></i>No products found</div>'; return; }
 
   el.innerHTML = items.map(function (i) {
     var qty = (APP.cart[i.ItemID] ? APP.cart[i.ItemID].qty : 0);
@@ -2574,6 +2693,9 @@ function renderCItems(items) {
       imgSrc = 'data:image/jpeg;base64,' + imgSrc;
     }
     var thumbHtml = imgSrc ? '<img src="' + imgSrc + '" alt="' + i.ItemName + '">' : '<div class="ecom-emoji-avatar">' + getEmoji(i.ItemName) + '</div>';
+
+    // Category badge
+    var catBadge = i.Category ? '<div class="ecom-cat-badge">' + i.Category + '</div>' : '';
 
     var ctrlHtml = '';
     if (qty > 0) {
@@ -2588,7 +2710,7 @@ function renderCItems(items) {
 
     return '<div class="ecom-card' + inCart + '" id="ic_' + i.ItemID + '">' +
       '<div>' +
-      '<div class="ecom-thumb-box">' + thumbHtml + '</div>' +
+      '<div class="ecom-thumb-box">' + catBadge + thumbHtml + '</div>' +
       '<div class="ecom-item-title">' + i.ItemName + '</div>' +
       '<div class="ecom-price-pill">₹' + fmt(i.Price) + ' <span class="ecom-unit-label">/ ' + i.Unit + '</span></div>' +
       '</div>' +
@@ -2597,11 +2719,109 @@ function renderCItems(items) {
   }).join('');
 }
 
+// Build dynamic category chips from loaded items
+function buildCategoryChips_(items) {
+  var scroll = document.getElementById('ecomCategoryScroll');
+  if (!scroll) return;
+
+  var cats = {};
+  (items || []).forEach(function (i) {
+    var cat = (i.Category || '').trim();
+    if (cat) cats[cat] = (cats[cat] || 0) + 1;
+  });
+
+  var activeCat = APP.activeCategoryFilter || 'all';
+  var allCount = items ? items.length : 0;
+  var html = '<button class="ecom-cat-chip' + (activeCat === 'all' ? ' active' : '') + '" data-cat="all" onclick="filterByCategory(\'all\')"><i class="fa fa-border-all"></i> All <span class="ecom-cat-count">' + allCount + '</span></button>';
+
+  var catEmojis = {
+    'vegetables': '🥬', 'dairy': '🥛', 'fruits': '🍎', 'grocery': '🛒',
+    'packaging': '📦', 'spices': '🌶️', 'grains': '🌾', 'oils': '🫗',
+    'beverages': '🥤', 'meat': '🍖', 'seafood': '🐟', 'bakery': '🍞',
+    'frozen': '🧊', 'snacks': '🍿', 'cleaning': '🧹', 'pulses': '🫘'
+  };
+
+  Object.keys(cats).sort().forEach(function (cat) {
+    var emoji = catEmojis[cat.toLowerCase()] || '📋';
+    html += '<button class="ecom-cat-chip' + (activeCat === cat ? ' active' : '') + '" data-cat="' + cat + '" onclick="filterByCategory(\'' + cat.replace(/'/g, "\\'") + '\')">' + emoji + ' ' + cat + ' <span class="ecom-cat-count">' + cats[cat] + '</span></button>';
+  });
+
+  scroll.innerHTML = html;
+}
+
+function filterByCategory(cat) {
+  APP.activeCategoryFilter = cat;
+  // Clear search when switching categories
+  var searchInp = document.getElementById('cItemSearch');
+  if (searchInp) searchInp.value = '';
+  filterCItems();
+  // Update active chip UI
+  var chips = document.querySelectorAll('.ecom-cat-chip');
+  chips.forEach(function (c) {
+    c.classList.toggle('active', c.getAttribute('data-cat') === cat);
+  });
+}
+
 function filterCItems() {
   var searchInp = document.getElementById('cItemSearch');
   var q = searchInp ? normQ_(searchInp.value) : '';
-  var filtered = (APP.clientItems || []).filter(function (i) { return rowSearchText_(i).indexOf(q) > -1; });
+  var activeCat = APP.activeCategoryFilter || 'all';
+  var filtered = (APP.clientItems || []).filter(function (i) {
+    var matchesSearch = rowSearchText_(i).indexOf(q) > -1;
+    var matchesCat = (activeCat === 'all') || ((i.Category || '').trim() === activeCat);
+    return matchesSearch && matchesCat;
+  });
   renderCItems(filtered);
+}
+
+// ===== SMART CART & DISCOUNT ENGINE =====
+function getEffectiveClientDiscount() {
+  var siteId = APP.selectedSiteId;
+  if (siteId && APP.clientSites && APP.clientSites.length) {
+    var site = APP.clientSites.find(function (s) { return String(s.SiteID) === String(siteId); });
+    if (site && site.DiscountPercent !== undefined && site.DiscountPercent !== '' && site.DiscountPercent !== null) {
+      var sDisc = parseFloat(site.DiscountPercent);
+      if (!isNaN(sDisc) && sDisc >= 0) {
+        return {
+          discountPercent: sDisc,
+          discountReason: (APP.clientDiscount && APP.clientDiscount.discountReason) || '',
+          source: 'site'
+        };
+      }
+    }
+  }
+  return APP.clientDiscount || { discountPercent: 0, discountReason: '', source: 'none' };
+}
+
+function calculateCartTotals() {
+  var keys = Object.keys(APP.cart || {});
+  var totalItemsCount = 0;
+  var grossSubtotal = 0;
+
+  keys.forEach(function (k) {
+    var it = APP.cart[k];
+    if (it && it.qty > 0) {
+      totalItemsCount += it.qty;
+      grossSubtotal += it.qty * (parseFloat(it.price) || 0);
+    }
+  });
+
+  grossSubtotal = Math.round(grossSubtotal * 100) / 100;
+  var effDisc = getEffectiveClientDiscount();
+  var discountPercent = parseFloat(effDisc.discountPercent) || 0;
+  var discountAmount = discountPercent > 0 ? Math.round(grossSubtotal * (discountPercent / 100) * 100) / 100 : 0;
+  var netTotal = Math.max(0, Math.round((grossSubtotal - discountAmount) * 100) / 100);
+
+  return {
+    keys: keys,
+    totalItemsCount: totalItemsCount,
+    grossSubtotal: grossSubtotal,
+    discountPercent: discountPercent,
+    discountAmount: discountAmount,
+    discountReason: effDisc.discountReason || '',
+    netTotal: netTotal,
+    uniqueCount: keys.length
+  };
 }
 
 function changeQty(itemId, delta) {
@@ -2625,24 +2845,245 @@ function updateCartBar() {
   var bar = document.getElementById('cartBar');
   var countEl = document.getElementById('cartBadgeCount');
   var infoEl = document.getElementById('cartInfo');
+  var discPill = document.getElementById('cartBarDiscPill');
+  var discTxt = document.getElementById('cartBarDiscTxt');
 
-  var keys = Object.keys(APP.cart);
-  var totalItemsCount = 0;
-  var totalPrice = 0;
+  var calc = calculateCartTotals();
 
-  keys.forEach(function (k) {
-    totalItemsCount += APP.cart[k].qty;
-    totalPrice += APP.cart[k].qty * APP.cart[k].price;
-  });
-
-  if (!totalItemsCount) {
+  if (!calc.totalItemsCount) {
     if (bar) bar.classList.add('hidden');
+    var modal = document.getElementById('cartModal');
+    if (modal && modal.classList.contains('active')) {
+      renderCartModal();
+    }
     return;
   }
 
-  if (countEl) countEl.textContent = totalItemsCount;
-  if (infoEl) infoEl.textContent = keys.length + ' items • ₹' + fmt(totalPrice);
+  if (countEl) countEl.textContent = calc.totalItemsCount;
+  if (infoEl) {
+    var discTag = calc.discountPercent > 0 ? ' <small style="color:#86efac;font-size:11px;">(Net)</small>' : '';
+    infoEl.innerHTML = calc.uniqueCount + ' items • ₹' + fmt(calc.netTotal) + discTag;
+  }
+
+  if (discPill && discTxt) {
+    if (calc.discountPercent > 0) {
+      discTxt.textContent = calc.discountPercent + '% OFF';
+      discPill.classList.remove('hidden');
+    } else {
+      discPill.classList.add('hidden');
+    }
+  }
+
   if (bar) bar.classList.remove('hidden');
+
+  var cartModal = document.getElementById('cartModal');
+  if (cartModal && cartModal.classList.contains('active')) {
+    renderCartModal();
+  }
+}
+
+// ===== SMART CART MODAL CONTROLS =====
+function openCartModal() {
+  syncOrderMetaToCartModal();
+  renderCartModal();
+  openModal('cartModal');
+}
+
+function syncOrderMetaToCartModal() {
+  var mainDelDate = document.getElementById('cDelDate');
+  var modalDelDate = document.getElementById('cartModalDelDate');
+  if (mainDelDate && modalDelDate) {
+    modalDelDate.value = mainDelDate.value || today();
+  }
+  var mainNotes = document.getElementById('cOrderNotes');
+  var modalNotes = document.getElementById('cartModalNotes');
+  if (mainNotes && modalNotes) {
+    modalNotes.value = mainNotes.value || '';
+  }
+}
+
+function syncCartModalDelDate() {
+  var modalDelDate = document.getElementById('cartModalDelDate');
+  var mainDelDate = document.getElementById('cDelDate');
+  if (modalDelDate && mainDelDate) {
+    mainDelDate.value = modalDelDate.value;
+  }
+}
+
+function syncCartModalNotes() {
+  var modalNotes = document.getElementById('cartModalNotes');
+  var mainNotes = document.getElementById('cOrderNotes');
+  if (modalNotes && mainNotes) {
+    mainNotes.value = modalNotes.value;
+  }
+}
+
+function renderCartModal() {
+  var container = document.getElementById('cartItemsContainer');
+  var subEl = document.getElementById('cartModalSub');
+  var countEl = document.getElementById('cartModalItemCount');
+  var subtotalEl = document.getElementById('cartBillSubtotal');
+  var discRow = document.getElementById('cartBillDiscRow');
+  var discPctEl = document.getElementById('cartBillDiscPct');
+  var discAmtEl = document.getElementById('cartBillDiscAmt');
+  var savingsEl = document.getElementById('cartBillSavings');
+  var savingsAmtEl = document.getElementById('cartSavingsAmt');
+  var netTotalEl = document.getElementById('cartBillNetTotal');
+  var btnTotalEl = document.getElementById('cartModalBtnTotal');
+  var placeBtn = document.getElementById('cartModalPlaceBtn');
+  var discBanner = document.getElementById('cartDiscountBanner');
+  var discTitle = document.getElementById('cartDiscTitle');
+  var discReason = document.getElementById('cartDiscReason');
+  var discBadge = document.getElementById('cartDiscBadge');
+
+  // Update site info
+  var siteBadge = document.getElementById('cartSiteNameBadge');
+  var siteAddr = document.getElementById('cartSiteAddressText');
+  var currSite = (APP.clientSites || []).find(function (s) { return String(s.SiteID) === String(APP.selectedSiteId); });
+  if (siteBadge) siteBadge.textContent = currSite ? currSite.CompanyName : 'No Site Selected';
+  if (siteAddr) siteAddr.textContent = currSite ? (currSite.Address || 'No address provided') : 'Please select a delivery site';
+
+  var calc = calculateCartTotals();
+
+  if (subEl) subEl.textContent = calc.totalItemsCount + ' units • ' + calc.uniqueCount + ' products';
+  if (countEl) countEl.textContent = calc.uniqueCount + ' Products (' + calc.totalItemsCount + ' units)';
+
+  // Handle Discount Banner
+  if (discBanner) {
+    if (calc.discountPercent > 0) {
+      if (discTitle) discTitle.textContent = '🎉 Special Day / Occasional Discount: ' + calc.discountPercent + '% OFF!';
+      if (discReason) discReason.textContent = calc.discountReason ? (calc.discountReason + ' applied on this order') : 'Occasional discount applied on all items';
+      if (discBadge) discBadge.textContent = '-' + calc.discountPercent + '%';
+      discBanner.classList.remove('hidden');
+    } else {
+      discBanner.classList.add('hidden');
+    }
+  }
+
+  // Handle Bill Breakdown
+  if (subtotalEl) subtotalEl.textContent = '₹' + fmt(calc.grossSubtotal);
+  if (discRow) {
+    if (calc.discountPercent > 0) {
+      if (discPctEl) discPctEl.textContent = calc.discountPercent + '%';
+      if (discAmtEl) discAmtEl.textContent = '-₹' + fmt(calc.discountAmount);
+      discRow.classList.remove('hidden');
+    } else {
+      discRow.classList.add('hidden');
+    }
+  }
+  if (savingsEl && savingsAmtEl) {
+    if (calc.discountAmount > 0) {
+      savingsAmtEl.textContent = '₹' + fmt(calc.discountAmount);
+      savingsEl.classList.remove('hidden');
+    } else {
+      savingsEl.classList.add('hidden');
+    }
+  }
+  if (netTotalEl) netTotalEl.textContent = '₹' + fmt(calc.netTotal);
+  if (btnTotalEl) btnTotalEl.textContent = '₹' + fmt(calc.netTotal);
+
+  if (!calc.totalItemsCount) {
+    if (container) {
+      container.innerHTML =
+        '<div class="cart-empty-state">' +
+        '<div class="cart-empty-icon"><i class="fa fa-basket-shopping"></i></div>' +
+        '<div class="cart-empty-title">Your Cart is Empty</div>' +
+        '<div class="cart-empty-desc">Explore products from your catalog and add items to your cart.</div>' +
+        '<button type="button" class="btn btn-p" onclick="closeModal(\'cartModal\')"><i class="fa fa-store"></i> Browse Catalog</button>' +
+        '</div>';
+    }
+    if (placeBtn) placeBtn.disabled = true;
+    return;
+  }
+
+  if (placeBtn) placeBtn.disabled = false;
+
+  // Render items list
+  if (container) {
+    var itemsHtml = Object.keys(APP.cart).map(function (k) {
+      var it = APP.cart[k];
+      if (!it || it.qty <= 0) return '';
+      var catItem = (APP.clientItems || []).find(function (x) { return String(x.ItemID) === String(k); });
+      var imgSrc = catItem && catItem.ImageBase64 ? String(catItem.ImageBase64).trim() : '';
+      if (imgSrc && !imgSrc.startsWith('data:') && !imgSrc.startsWith('http://') && !imgSrc.startsWith('https://')) {
+        imgSrc = 'data:image/jpeg;base64,' + imgSrc;
+      }
+      var thumbHtml = imgSrc ? '<img src="' + imgSrc + '" alt="' + it.name + '">' : '<span>' + getEmoji(it.name) + '</span>';
+      var rowTotal = it.qty * (parseFloat(it.price) || 0);
+
+      return '<div class="cart-item-row" id="cir_' + k + '">' +
+        '<div class="cart-item-thumb">' + thumbHtml + '</div>' +
+        '<div class="cart-item-info">' +
+        '<div class="cart-item-name" title="' + it.name + '">' + it.name + '</div>' +
+        '<div class="cart-item-rate">₹' + fmt(it.price) + ' / ' + it.unit + '</div>' +
+        '</div>' +
+        '<div class="cart-item-controls">' +
+        '<div class="cart-qty-ctrl">' +
+        '<button type="button" class="cart-qty-btn" onclick="updateCartItemQty(\'' + k + '\', -1, true)">-</button>' +
+        '<input type="number" class="cart-qty-inp" min="1" value="' + it.qty + '" onchange="updateCartItemQty(\'' + k + '\', this.value, false)">' +
+        '<button type="button" class="cart-qty-btn" onclick="updateCartItemQty(\'' + k + '\', 1, true)">+</button>' +
+        '</div>' +
+        '<button type="button" class="cart-item-remove-btn" onclick="removeCartItem(\'' + k + '\')" title="Remove product"><i class="fa fa-trash-can"></i></button>' +
+        '</div>' +
+        '<div class="cart-item-total">₹' + fmt(rowTotal) + '</div>' +
+        '</div>';
+    }).join('');
+
+    container.innerHTML = itemsHtml;
+  }
+}
+
+function updateCartItemQty(itemId, val, isDelta) {
+  var item = (APP.clientItems || []).find(function (x) { return String(x.ItemID) === String(itemId); });
+  var curr = (APP.cart[itemId] ? APP.cart[itemId].qty : 0);
+  var next = isDelta ? Math.max(0, curr + val) : Math.max(0, parseInt(val, 10) || 0);
+
+  if (next > 0) {
+    if (item) {
+      APP.cart[itemId] = { qty: next, price: item.Price, name: item.ItemName, unit: item.Unit };
+    } else if (APP.cart[itemId]) {
+      APP.cart[itemId].qty = next;
+    }
+  } else {
+    delete APP.cart[itemId];
+  }
+
+  // Sync catalog cards on page if they exist
+  var numEl = document.getElementById('qi_' + itemId);
+  var cardEl = document.getElementById('ic_' + itemId);
+  if (numEl) numEl.textContent = next;
+  if (cardEl) {
+    if (next > 0) cardEl.classList.add('in-cart');
+    else cardEl.classList.remove('in-cart');
+  }
+
+  // Update floating bar and modal
+  updateCartBar();
+}
+
+function removeCartItem(itemId) {
+  delete APP.cart[itemId];
+  var cardEl = document.getElementById('ic_' + itemId);
+  if (cardEl) cardEl.classList.remove('in-cart');
+  var numEl = document.getElementById('qi_' + itemId);
+  if (numEl) numEl.textContent = '0';
+  updateCartBar();
+}
+
+function clearCart() {
+  if (!Object.keys(APP.cart || {}).length) return;
+  if (!confirm('Are you sure you want to clear all items from your cart?')) return;
+  APP.cart = {};
+  var cards = document.querySelectorAll('.ecom-card.in-cart');
+  cards.forEach(function (c) { c.classList.remove('in-cart'); });
+  updateCartBar();
+  toast('Cart cleared');
+}
+
+function placeOrderFromModal() {
+  syncCartModalDelDate();
+  syncCartModalNotes();
+  placeOrder();
 }
 
 function renderCSitesDropdownAndList_(sites) {
@@ -2686,12 +3127,14 @@ function loadCSites() {
   api('getClientSites', { clientId: APP.clientId }, function (r) {
     APP.clientSites = r || [];
     renderCSitesDropdownAndList_(APP.clientSites);
+    updateCartBar();
   });
 }
 
 function selectCSite(siteId) {
   APP.selectedSiteId = siteId;
   renderCSitesDropdownAndList_(APP.clientSites || []);
+  updateCartBar();
 }
 
 function updateCreditDashboardCard_(limit, balance) {
@@ -2767,10 +3210,18 @@ function placeOrder() {
   var delDate = document.getElementById('cDelDate').value;
   if (!delDate) { toast('Please select delivery date', true); return; }
 
-  api('placeOrder', { clientId: APP.clientId, siteId: APP.selectedSiteId, deliveryDate: delDate, items: items }, function (r) {
+  var notesEl = document.getElementById('cOrderNotes');
+  var notes = notesEl ? notesEl.value.trim() : '';
+
+  api('placeOrder', { clientId: APP.clientId, siteId: APP.selectedSiteId, deliveryDate: delDate, notes: notes, items: items }, function (r) {
     if (r && r.success) {
       toast('🎉 Order placed successfully! ID: ' + r.orderId);
       APP.cart = {};
+      if (notesEl) notesEl.value = '';
+      var mNotes = document.getElementById('cartModalNotes');
+      if (mNotes) mNotes.value = '';
+      closeModal('cartModal');
+      APP.activeCategoryFilter = 'all';
       updateCartBar();
       cPage('history');
     } else {
@@ -2799,12 +3250,31 @@ function viewCOrder(orderId) {
       var thumb = i.ImageBase64 ? itemImageHtml_(i.ImageBase64, 32) : '<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:20px;">' + getEmoji(i.ItemName) + '</div>';
       return '<div class="odi-row"><div style="display:flex;gap:10px;align-items:center;">' + thumb + '<div><div style="font-weight:700;">' + i.ItemName + '</div><div style="font-size:11px;color:var(--muted);">' + (i.DeliveredQty || i.OrderedQty) + ' ' + i.Unit + ' × ₹' + fmt(i.Price) + '</div></div></div><div style="font-weight:700;color:var(--green-mid)">₹' + fmt(i.Total) + '</div></div>';
     }).join('');
-    var total = (r.items || []).reduce(function (s, i) { return s + (parseFloat(i.Total) || 0); }, 0);
+    var subtotal = (r.items || []).reduce(function (s, i) { return s + (parseFloat(i.Total) || 0); }, 0);
+    var discPct = parseFloat(r.DiscountPercent) || 0;
+    var discAmt = parseFloat(r.DiscountAmount) || 0;
+    if (discPct > 0 && discAmt === 0 && subtotal > 0) {
+      discAmt = Math.round(subtotal * (discPct / 100) * 100) / 100;
+    }
+    var netTotal = parseFloat(r.TotalAmount) || (subtotal - discAmt);
+
+    var totalsHtml = '';
+    if (discPct > 0 || discAmt > 0) {
+      totalsHtml =
+        '<div style="margin-top:12px;padding:12px;background:var(--card-bg, #f8fafc);border:1px solid var(--border);border-radius:10px;">' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:6px;"><span>Gross Subtotal</span><span>₹' + fmt(subtotal) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;color:#16a34a;font-weight:700;margin-bottom:6px;"><span>Special Discount (' + discPct + '%)</span><span>- ₹' + fmt(discAmt) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px dashed var(--border);font-weight:800;font-size:16px;color:var(--text);"><span style="color:var(--green-dark);">Net Payable</span><span>₹' + fmt(netTotal) + '</span></div>' +
+        '</div>';
+    } else {
+      totalsHtml = '<div style="display:flex;justify-content:space-between;padding:11px;background:var(--green-dark);color:white;border-radius:9px;margin-top:10px;"><span style="font-weight:600;">Total</span><span style="font-weight:800;font-size:16px;">₹' + fmt(netTotal) + '</span></div>';
+    }
+
     document.getElementById('cOrderContent').innerHTML =
       '<div style="font-size:16px;font-weight:800;margin-bottom:10px;">Order #' + r.OrderID + '</div>' +
       '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">' + sBadge(r.Status) + '<span style="font-size:12px;color:var(--muted);">Delivery: ' + fmtDate(r.DeliveryDate) + '</span></div>' +
       rows +
-      '<div style="display:flex;justify-content:space-between;padding:11px;background:var(--green-dark);color:white;border-radius:9px;margin-top:10px;"><span style="font-weight:600;">Total</span><span style="font-weight:800;font-size:16px;">₹' + fmt(total) + '</span></div>' +
+      totalsHtml +
       '<button class="btn btn-s btn-full" style="margin-top:10px;" onclick="reorder(\'' + r.OrderID + '\')"><i class="fa fa-rotate-right"></i> Reorder This</button>' +
       (r.Status === 'Delivered' ? '<button class="btn btn-full" style="margin-top:8px;background:linear-gradient(135deg,#f97316,#ea580c);color:white;border:none;padding:12px;font-weight:700;" onclick="closeModal(\'cOrderModal\');openReportIssueModal(\'' + r.OrderID + '\')"><i class="fa fa-triangle-exclamation"></i> Report an Issue</button>' : '');
     openModal('cOrderModal');
